@@ -1,8 +1,8 @@
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct Transition {
-    from: u32,
-    label: Option<char>,
-    to: u32
+    pub from: u32,
+    pub label: Option<char>,
+    pub to: u32
 }
 
 impl Transition {
