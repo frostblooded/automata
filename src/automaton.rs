@@ -58,6 +58,27 @@ impl Automaton {
                                            .collect();
     }
 
+    pub fn concat(&mut self, other: &Automaton) {
+        self.shift_states(other.counter.value);
+        self.counter.value += other.counter.value;
+
+        self.states = self.states.union(&other.states)
+                                 .map(|&s| s)
+                                 .collect();
+
+        self.transitions = self.transitions.union(&other.transitions)
+                                           .map(|&s| s)
+                                           .collect();
+
+        for f in &self.final_states {
+            for i in &other.initial_states {
+                self.transitions.insert(Transition::new(*f, None, *i));
+            }
+        }
+
+        self.final_states = other.final_states.clone();
+    }
+
     fn shift_states(&mut self, amount: u32) {
         self.states = self.states.iter().map(|s| s + amount).collect();
         self.initial_states = self.initial_states.iter().map(|s| s + amount).collect();
@@ -88,6 +109,7 @@ mod tests {
         assert_eq!(automaton.initial_states, set![0]);
         assert_eq!(automaton.final_states, set![1]);
         assert_eq!(automaton.transitions, set![Transition::new(0, Some('a'), 1)]);
+        assert_eq!(automaton.counter.value, 2);
     }
 
     #[test]
@@ -104,6 +126,25 @@ mod tests {
             Transition::new(2, Some('a'), 3),
             Transition::new(0, Some('b'), 1)
         ]);
+        assert_eq!(automaton1.counter.value, 4);
+    }
+
+    #[test]
+    fn concat_automata() {
+        let mut automaton1 = Automaton::from_letter('a');
+        let automaton2 = Automaton::from_letter('b');
+
+        automaton1.concat(&automaton2);
+
+        assert_eq!(automaton1.states, set![0, 1, 2, 3]);
+        assert_eq!(automaton1.initial_states, set![2]);
+        assert_eq!(automaton1.final_states, set![1]);
+        assert_eq!(automaton1.transitions, set![
+            Transition::new(2, Some('a'), 3),
+            Transition::new(3, None, 0),
+            Transition::new(0, Some('b'), 1)
+        ]);
+        assert_eq!(automaton1.counter.value, 4);
     }
 
     #[test]
