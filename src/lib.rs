@@ -1,4 +1,4 @@
 mod counter;
 
-pub mod dfa;
+pub mod automaton;
 pub mod transition;

@@ -4,7 +4,7 @@ use crate::counter::Counter;
 use std::collections::HashSet;
 
 #[derive(Debug)]
-pub struct DFA {
+pub struct Automaton {
     states: HashSet<u32>,
     transitions: HashSet<Transition>,
     final_states: HashSet<u32>,
@@ -14,9 +14,9 @@ pub struct DFA {
     counter: Counter
 }
 
-impl DFA {
+impl Automaton {
     pub fn new() -> Self {
-        DFA {
+        Automaton {
             states: HashSet::new(),
             transitions: HashSet::new(),
             final_states: HashSet::new(),
@@ -26,18 +26,18 @@ impl DFA {
     }
 
     pub fn from_letter(letter: char) -> Self {
-        let mut dfa = DFA::new();
-        let state1 = dfa.counter.tick();
-        let state2 = dfa.counter.tick();
+        let mut automaton = Automaton::new();
+        let state1 = automaton.counter.tick();
+        let state2 = automaton.counter.tick();
 
-        dfa.states.insert(state1);
-        dfa.states.insert(state2);
-        dfa.transitions.insert(Transition::new(state1, Some(letter), state2));
+        automaton.states.insert(state1);
+        automaton.states.insert(state2);
+        automaton.transitions.insert(Transition::new(state1, Some(letter), state2));
 
-        dfa.initial_states.insert(state1);
-        dfa.final_states.insert(state2);
+        automaton.initial_states.insert(state1);
+        automaton.final_states.insert(state2);
 
-        dfa
+        automaton
     }
 }
 
@@ -54,11 +54,11 @@ mod tests {
 
     #[test]
     fn create_from_letter() {
-        let dfa = DFA::from_letter('a');
+        let automaton = Automaton::from_letter('a');
 
-        assert_eq!(dfa.states, set![0, 1]);
-        assert_eq!(dfa.initial_states, set![0]);
-        assert_eq!(dfa.final_states, set![1]);
-        assert_eq!(dfa.transitions, set![Transition::new(0, Some('a'), 1)]);
+        assert_eq!(automaton.states, set![0, 1]);
+        assert_eq!(automaton.initial_states, set![0]);
+        assert_eq!(automaton.final_states, set![1]);
+        assert_eq!(automaton.transitions, set![Transition::new(0, Some('a'), 1)]);
     }
 }
