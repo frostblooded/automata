@@ -1,5 +1,6 @@
 use crate::transition::Transition;
 use crate::counter::Counter;
+use crate::alphabet;
 
 use std::collections::HashSet;
 
@@ -12,6 +13,7 @@ macro_rules! set {
 
 #[derive(Debug)]
 pub struct Automaton {
+    alphabet: HashSet<char>,
     states: HashSet<u32>,
     transitions: HashSet<Transition>,
     final_states: HashSet<u32>,
@@ -24,6 +26,7 @@ pub struct Automaton {
 impl Automaton {
     pub fn new() -> Self {
         Automaton {
+            alphabet: alphabet::get_english(),
             states: HashSet::new(),
             transitions: HashSet::new(),
             final_states: HashSet::new(),
