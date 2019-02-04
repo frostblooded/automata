@@ -3,6 +3,13 @@ use crate::counter::Counter;
 
 use std::collections::HashSet;
 
+// Build sets easily for easy testing and comparing
+macro_rules! set {
+    [$($x:expr),+] => {
+        [$($x,)+].iter().map(|&x| x.clone()).collect()
+    }
+}
+
 #[derive(Debug)]
 pub struct Automaton {
     states: HashSet<u32>,
@@ -79,6 +86,26 @@ impl Automaton {
         self.final_states = other.final_states.clone();
     }
 
+    pub fn kleene(&mut self) {
+        let new_initial_state = self.counter.tick();
+        let new_final_state = self.counter.tick();
+
+        self.states.insert(new_initial_state);
+        self.states.insert(new_final_state);
+
+        for f in &self.final_states {
+            self.transitions.insert(Transition::new(*f, None, new_final_state));
+        }
+
+        for i in &self.initial_states {
+            self.transitions.insert(Transition::new(new_initial_state, None, *i));
+        }
+
+        self.transitions.insert(Transition::new(new_final_state, None, new_initial_state));
+        self.initial_states = set![new_initial_state];
+        self.final_states = set![new_final_state];
+    }
+
     fn shift_states(&mut self, amount: u32) {
         self.states = self.states.iter().map(|s| s + amount).collect();
         self.initial_states = self.initial_states.iter().map(|s| s + amount).collect();
@@ -93,13 +120,6 @@ impl Automaton {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // Build sets easily for easy testing and comparing
-    macro_rules! set {
-        [$($x:expr),+] => {
-            [$($x,)+].iter().map(|&x| x.clone()).collect()
-        }
-    }
 
     #[test]
     fn create_from_letter() {
@@ -145,6 +165,24 @@ mod tests {
             Transition::new(0, Some('b'), 1)
         ]);
         assert_eq!(automaton1.counter.value, 4);
+    }
+
+    #[test]
+    fn kleene_automata() {
+        let mut automaton = Automaton::from_letter('a');
+
+        automaton.kleene();
+
+        assert_eq!(automaton.states, set![0, 1, 2, 3]);
+        assert_eq!(automaton.initial_states, set![2]);
+        assert_eq!(automaton.final_states, set![3]);
+        assert_eq!(automaton.transitions, set![
+            Transition::new(0, Some('a'), 1),
+            Transition::new(1, None, 3),
+            Transition::new(3, None, 2),
+            Transition::new(2, None, 0)
+        ]);
+        assert_eq!(automaton.counter.value, 4);
     }
 
     #[test]
