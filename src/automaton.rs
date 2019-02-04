@@ -115,6 +115,37 @@ impl Automaton {
             Transition::new(t.from + amount, t.label, t.to + amount)
         ).collect();
     }
+
+    // Returns the states that are reachable by a state
+    // through a specific transition
+    fn reachable_with(&self, start_state: u32, wanted_label: Option<char>) -> HashSet<u32> {
+        self.transitions.iter()
+                        .filter(|s| s.from == start_state && s.label == wanted_label)
+                        .map(|s| s.to)
+                        .collect()
+    }
+
+    pub fn epsilon_closure(&self, starting_states: &HashSet<u32>) -> HashSet<u32> {
+        let mut res = starting_states.clone();
+        let mut found_this_step = starting_states.clone();
+        let mut found_last_step: HashSet<u32>;
+
+        while found_this_step.len() > 0 {
+            found_last_step = found_this_step.clone();
+            found_this_step.clear();
+
+            for s in found_last_step {
+                let epsilon_reachable = self.reachable_with(s, None);
+
+                for reached_state in &epsilon_reachable {
+                    res.insert(*reached_state);
+                    found_this_step.insert(*reached_state);
+                }
+            }
+        }
+
+        res
+    }
 }
 
 #[cfg(test)]
@@ -194,5 +225,21 @@ mod tests {
         assert_eq!(automaton.initial_states, set![2]);
         assert_eq!(automaton.final_states, set![3]);
         assert_eq!(automaton.transitions, set![Transition::new(2, Some('a'), 3)]);
+    }
+
+    #[test]
+    fn epsilon_closure() {
+        let mut automaton = Automaton::new();
+        automaton.states.insert(0);
+        automaton.states.insert(1);
+        automaton.states.insert(2);
+        automaton.counter.value = 3;
+        automaton.transitions.insert(Transition::new(0, Some('a'), 1));
+        automaton.transitions.insert(Transition::new(1, None, 2));
+        automaton.transitions.insert(Transition::new(2, Some('b'), 0));
+
+        assert_eq!(automaton.epsilon_closure(&set![0]), set![0]);
+        assert_eq!(automaton.epsilon_closure(&set![0, 1]), set![0, 1, 2]);
+        assert_eq!(automaton.epsilon_closure(&set![1]), set![1, 2]);
     }
 }
