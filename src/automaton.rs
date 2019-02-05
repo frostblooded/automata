@@ -2,7 +2,8 @@ use crate::transition::Transition;
 use crate::counter::Counter;
 use crate::alphabet;
 
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
+use std::vec::Vec;
 
 // Build sets easily for easy testing and comparing
 macro_rules! set {
@@ -10,6 +11,17 @@ macro_rules! set {
         [$($x,)+].iter().map(|&x| x.clone()).collect()
     }
 }
+
+fn get_value_key<'a, K: PartialEq + Eq + std::hash::Hash, V: PartialEq + Eq>(map: &'a HashMap<K, V>, value: &'a V) -> Option<&'a K> {
+    for (k, v) in map.iter(){
+        if *v == *value {
+            return Some(k);
+        }
+    }
+
+    None
+}
+
 
 #[derive(Debug)]
 pub struct Automaton {
@@ -26,7 +38,8 @@ pub struct Automaton {
 impl Automaton {
     pub fn new() -> Self {
         Automaton {
-            alphabet: alphabet::get_english(),
+            // alphabet: alphabet::get_english(),
+            alphabet: HashSet::new(),
             states: HashSet::new(),
             transitions: HashSet::new(),
             final_states: HashSet::new(),
@@ -40,6 +53,7 @@ impl Automaton {
         let state1 = automaton.counter.tick();
         let state2 = automaton.counter.tick();
 
+        automaton.alphabet.insert(letter);
         automaton.states.insert(state1);
         automaton.states.insert(state2);
         automaton.transitions.insert(Transition::new(state1, Some(letter), state2));
@@ -50,10 +64,13 @@ impl Automaton {
         automaton
     }
 
-    pub fn union(&mut self, other: &Automaton) {
+    fn union(&mut self, other: &Automaton) {
         self.shift_states(other.counter.value);
         self.counter.value += other.counter.value;
 
+        self.alphabet = self.alphabet.union(&other.alphabet)
+                                     .map(|&a| a)
+                                     .collect();
         self.states = self.states.union(&other.states)
                                  .map(|&s| s)
                                  .collect();
@@ -68,10 +85,13 @@ impl Automaton {
                                            .collect();
     }
 
-    pub fn concat(&mut self, other: &Automaton) {
+    fn concat(&mut self, other: &Automaton) {
         self.shift_states(other.counter.value);
         self.counter.value += other.counter.value;
 
+        self.alphabet = self.alphabet.union(&other.alphabet)
+                                     .map(|&a| a)
+                                     .collect();
         self.states = self.states.union(&other.states)
                                  .map(|&s| s)
                                  .collect();
@@ -89,7 +109,7 @@ impl Automaton {
         self.final_states = other.final_states.clone();
     }
 
-    pub fn kleene(&mut self) {
+    fn kleene(&mut self) {
         let new_initial_state = self.counter.tick();
         let new_final_state = self.counter.tick();
 
@@ -119,16 +139,96 @@ impl Automaton {
         ).collect();
     }
 
+    fn make_deterministic(&mut self) {
+        // Ideally we would have sets everywhere as this ensures that
+        // we don't get any duplication. The problem is that the HashSet
+        // structure doesn't implement the Hash trait, so we can't have
+        // a HashSet that contains HashSets. That is why we are using vectors
+        // of HashSets and checking against duplicates manually.
+        let mut res_states: Vec<HashSet<u32>>;
+        let mut res_initial_states: Vec<HashSet<u32>>;
+        let mut res_final_states = HashSet::<u32>::new();
+        let mut res_transitions = HashSet::<Transition>::new();
+
+        res_initial_states = vec![self.epsilon_closure(&self.initial_states)];
+        res_states = res_initial_states.clone();
+
+        let mut found_this_step = res_initial_states.clone();
+        let mut found_last_step: Vec<HashSet<u32>>;
+
+        // While making the automaton deterministic, we are finding
+        // sets of states, which are themselves the new states.
+        // In the process of doing so, we need to have the state sets and
+        // their respective ids stored somewhere.
+        let mut found_set_states: HashMap<u32, HashSet<u32>> = HashMap::new();
+        let mut set_states_counter = Counter::new();
+
+        for s in &res_initial_states {
+            found_set_states.insert(set_states_counter.tick(), s.clone());
+        }
+
+        // This is a bit of a hack that forces the algorithm to process the states in the
+        // same order every time, which makes testing the method possible.
+        // TODO: Find a better way to do it
+        let mut sorted_alphabet = self.alphabet.iter().map(|&s| s).collect::<Vec<char>>();
+        sorted_alphabet.sort();
+
+        while found_this_step.len() > 0 {
+            found_last_step = found_this_step.clone();
+            found_this_step.clear();
+
+            for s in &found_last_step {
+                for a in &sorted_alphabet {
+                    let reachable_with_letter = self.reachable_from_set(s, Some(*a));
+                    let reachable_enclosed = self.epsilon_closure(&reachable_with_letter);
+
+                    if !res_states.contains(&reachable_enclosed) {
+                        found_set_states.insert(set_states_counter.tick(), reachable_enclosed.clone());
+                        res_states.push(reachable_enclosed.clone());
+                        
+                        if !found_this_step.contains(&reachable_enclosed) {
+                            found_this_step.push(reachable_enclosed.clone());
+                        }
+                    }
+
+                    let found_state_id = get_value_key(&found_set_states, &reachable_enclosed).unwrap();
+                    let start_state_id = get_value_key(&found_set_states, s).unwrap();
+
+                    res_transitions.insert(Transition::new(*start_state_id, Some(*a), *found_state_id));
+                }
+
+                if !self.final_states.is_disjoint(s) {
+                    let state_id = get_value_key(&found_set_states, s).unwrap();
+                    res_final_states.insert(*state_id);
+                }
+            }
+        }
+
+        self.states = found_set_states.keys().map(|&s| s).collect();
+        self.final_states = res_final_states;
+        self.transitions = res_transitions;
+    }
+
     // Returns the states that are reachable by a state
     // through a specific transition
-    fn reachable_with(&self, start_state: u32, wanted_label: Option<char>) -> HashSet<u32> {
+    fn reachable(&self, start_state: u32, wanted_label: Option<char>) -> HashSet<u32> {
         self.transitions.iter()
                         .filter(|s| s.from == start_state && s.label == wanted_label)
                         .map(|s| s.to)
                         .collect()
     }
 
-    pub fn epsilon_closure(&self, starting_states: &HashSet<u32>) -> HashSet<u32> {
+    fn reachable_from_set(&self, start_states: &HashSet<u32>, wanted_label: Option<char>) -> HashSet<u32> {
+        let mut res = HashSet::<u32>::new();
+
+        for s in start_states {
+            res = res.union(&self.reachable(*s, wanted_label)).map(|&s| s).collect();
+        }
+
+        res
+    }
+
+    fn epsilon_closure(&self, starting_states: &HashSet<u32>) -> HashSet<u32> {
         let mut res = starting_states.clone();
         let mut found_this_step = starting_states.clone();
         let mut found_last_step: HashSet<u32>;
@@ -138,11 +238,13 @@ impl Automaton {
             found_this_step.clear();
 
             for s in found_last_step {
-                let epsilon_reachable = self.reachable_with(s, None);
+                let epsilon_reachable = self.reachable(s, None);
 
                 for reached_state in &epsilon_reachable {
-                    res.insert(*reached_state);
-                    found_this_step.insert(*reached_state);
+                    if !res.contains(reached_state) {
+                        res.insert(*reached_state);
+                        found_this_step.insert(*reached_state);
+                    }
                 }
             }
         }
@@ -159,6 +261,7 @@ mod tests {
     fn create_from_letter() {
         let automaton = Automaton::from_letter('a');
 
+        assert_eq!(automaton.alphabet, set!['a']);
         assert_eq!(automaton.states, set![0, 1]);
         assert_eq!(automaton.initial_states, set![0]);
         assert_eq!(automaton.final_states, set![1]);
@@ -173,6 +276,7 @@ mod tests {
 
         automaton1.union(&automaton2);
 
+        assert_eq!(automaton1.alphabet, set!['a', 'b']);
         assert_eq!(automaton1.states, set![0, 1, 2, 3]);
         assert_eq!(automaton1.initial_states, set![0, 2]);
         assert_eq!(automaton1.final_states, set![1, 3]);
@@ -190,6 +294,7 @@ mod tests {
 
         automaton1.concat(&automaton2);
 
+        assert_eq!(automaton1.alphabet, set!['a', 'b']);
         assert_eq!(automaton1.states, set![0, 1, 2, 3]);
         assert_eq!(automaton1.initial_states, set![2]);
         assert_eq!(automaton1.final_states, set![1]);
@@ -244,5 +349,46 @@ mod tests {
         assert_eq!(automaton.epsilon_closure(&set![0]), set![0]);
         assert_eq!(automaton.epsilon_closure(&set![0, 1]), set![0, 1, 2]);
         assert_eq!(automaton.epsilon_closure(&set![1]), set![1, 2]);
+    }
+
+    #[test]
+    fn make_deterministic() {
+        let mut automaton = Automaton::new();
+
+        // automaton.states.insert(0);
+        // automaton.states.insert(1);
+        // automaton.states.insert(2);
+        automaton.alphabet = set!['a', 'b', 'c'];
+        automaton.states = set![0, 1, 2];
+        automaton.counter.value = 3;
+
+        automaton.initial_states = set![0];
+
+        automaton.final_states = set![2];
+
+        automaton.transitions = set![
+            Transition::new(0, Some('a'), 1),
+            Transition::new(1, Some('b'), 0),
+            Transition::new(1, None, 2),
+            Transition::new(2, None, 1),
+            Transition::new(2, Some('c'), 0)
+        ];
+
+        automaton.make_deterministic();
+
+        assert_eq!(automaton.states, set![0, 1, 2]);
+        assert_eq!(automaton.initial_states, set![0]);
+        assert_eq!(automaton.final_states, set![1]);
+        assert_eq!(automaton.transitions, set![
+            Transition::new(0, Some('a'), 1),
+            Transition::new(0, Some('b'), 2),
+            Transition::new(0, Some('c'), 2),
+            Transition::new(1, Some('a'), 2),
+            Transition::new(1, Some('b'), 0),
+            Transition::new(1, Some('c'), 0),
+            Transition::new(2, Some('a'), 2),
+            Transition::new(2, Some('b'), 2),
+            Transition::new(2, Some('c'), 2)
+        ]);
     }
 }
