@@ -1,5 +1,5 @@
 mod counter;
-mod alphabet;
+mod hashable_set;
 
 pub mod automaton;
 pub mod transition;

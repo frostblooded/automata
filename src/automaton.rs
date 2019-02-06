@@ -1,14 +1,13 @@
 use crate::transition::Transition;
 use crate::counter::Counter;
-use crate::alphabet;
+use crate::hashable_set::HashableSet;
 
 use std::collections::{HashSet, HashMap};
-use std::vec::Vec;
 
 // Build sets easily for easy testing and comparing
 macro_rules! set {
     [$($x:expr),+] => {
-        [$($x,)+].iter().map(|&x| x.clone()).collect()
+        [$($x,)+].iter().map(|x| x.clone()).collect()
     }
 }
 
@@ -21,7 +20,6 @@ fn get_value_key<'a, K: PartialEq + Eq + std::hash::Hash, V: PartialEq + Eq>(map
 
     None
 }
-
 
 #[derive(Debug)]
 pub struct Automaton {
@@ -140,27 +138,23 @@ impl Automaton {
     }
 
     fn make_deterministic(&mut self) {
-        // Ideally we would have sets everywhere as this ensures that
-        // we don't get any duplication. The problem is that the HashSet
-        // structure doesn't implement the Hash trait, so we can't have
-        // a HashSet that contains HashSets. That is why we are using vectors
-        // of HashSets and checking against duplicates manually.
-        let mut res_states: Vec<HashSet<u32>>;
-        let mut res_initial_states: Vec<HashSet<u32>>;
+        let mut res_states: HashSet<HashableSet<u32>>;
+        let mut res_initial_states: HashSet<HashableSet<u32>>;
         let mut res_final_states = HashSet::<u32>::new();
         let mut res_transitions = HashSet::<Transition>::new();
 
-        res_initial_states = vec![self.epsilon_closure(&self.initial_states)];
+        let initial_epsilon_closure: HashableSet<u32> = self.epsilon_closure(&self.initial_states).into();
+        res_initial_states = set![initial_epsilon_closure];
         res_states = res_initial_states.clone();
 
         let mut found_this_step = res_initial_states.clone();
-        let mut found_last_step: Vec<HashSet<u32>>;
+        let mut found_last_step: HashSet<HashableSet<u32>>;
 
         // While making the automaton deterministic, we are finding
         // sets of states, which are themselves the new states.
         // In the process of doing so, we need to have the state sets and
         // their respective ids stored somewhere.
-        let mut found_set_states: HashMap<u32, HashSet<u32>> = HashMap::new();
+        let mut found_set_states: HashMap<u32, HashableSet<u32>> = HashMap::new();
         let mut set_states_counter = Counter::new();
 
         for s in &res_initial_states {
@@ -180,14 +174,14 @@ impl Automaton {
             for s in &found_last_step {
                 for a in &sorted_alphabet {
                     let reachable_with_letter = self.reachable_from_set(s, Some(*a));
-                    let reachable_enclosed = self.epsilon_closure(&reachable_with_letter);
+                    let reachable_enclosed = self.epsilon_closure(&reachable_with_letter).into();
 
                     if !res_states.contains(&reachable_enclosed) {
                         found_set_states.insert(set_states_counter.tick(), reachable_enclosed.clone());
-                        res_states.push(reachable_enclosed.clone());
+                        res_states.insert(reachable_enclosed.clone());
                         
                         if !found_this_step.contains(&reachable_enclosed) {
-                            found_this_step.push(reachable_enclosed.clone());
+                            found_this_step.insert(reachable_enclosed.clone());
                         }
                     }
 
@@ -197,7 +191,7 @@ impl Automaton {
                     res_transitions.insert(Transition::new(*start_state_id, Some(*a), *found_state_id));
                 }
 
-                if !self.final_states.is_disjoint(s) {
+                if !self.final_states.is_disjoint(&**s) {
                     let state_id = get_value_key(&found_set_states, s).unwrap();
                     res_final_states.insert(*state_id);
                 }
