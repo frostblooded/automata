@@ -11,16 +11,6 @@ macro_rules! set {
     }
 }
 
-fn get_value_key<'a, K: PartialEq + Eq + std::hash::Hash, V: PartialEq + Eq>(map: &'a HashMap<K, V>, value: &'a V) -> Option<&'a K> {
-    for (k, v) in map.iter(){
-        if *v == *value {
-            return Some(k);
-        }
-    }
-
-    None
-}
-
 #[derive(Debug)]
 pub struct Automaton {
     alphabet: HashSet<char>,
@@ -154,11 +144,11 @@ impl Automaton {
         // sets of states, which are themselves the new states.
         // In the process of doing so, we need to have the state sets and
         // their respective ids stored somewhere.
-        let mut found_set_states: HashMap<u32, HashableSet<u32>> = HashMap::new();
+        let mut found_set_states: HashMap<HashableSet<u32>, u32> = HashMap::new();
         let mut set_states_counter = Counter::new();
 
         for s in &res_initial_states {
-            found_set_states.insert(set_states_counter.tick(), s.clone());
+            found_set_states.insert(s.clone(), set_states_counter.tick());
         }
 
         // This is a bit of a hack that forces the algorithm to process the states in the
@@ -177,7 +167,7 @@ impl Automaton {
                     let reachable_enclosed = self.epsilon_closure(&reachable_with_letter).into();
 
                     if !res_states.contains(&reachable_enclosed) {
-                        found_set_states.insert(set_states_counter.tick(), reachable_enclosed.clone());
+                        found_set_states.insert(reachable_enclosed.clone(), set_states_counter.tick());
                         res_states.insert(reachable_enclosed.clone());
                         
                         if !found_this_step.contains(&reachable_enclosed) {
@@ -185,20 +175,20 @@ impl Automaton {
                         }
                     }
 
-                    let found_state_id = get_value_key(&found_set_states, &reachable_enclosed).unwrap();
-                    let start_state_id = get_value_key(&found_set_states, s).unwrap();
+                    let found_state_id = found_set_states.get(&reachable_enclosed).unwrap();
+                    let state_id = found_set_states.get(s).unwrap();
 
-                    res_transitions.insert(Transition::new(*start_state_id, Some(*a), *found_state_id));
+                    res_transitions.insert(Transition::new(*state_id, Some(*a), *found_state_id));
                 }
 
                 if !self.final_states.is_disjoint(&**s) {
-                    let state_id = get_value_key(&found_set_states, s).unwrap();
+                    let state_id = found_set_states.get(s).unwrap();
                     res_final_states.insert(*state_id);
                 }
             }
         }
 
-        self.states = found_set_states.keys().map(|&s| s).collect();
+        self.states = found_set_states.values().map(|&s| s).collect();
         self.final_states = res_final_states;
         self.transitions = res_transitions;
     }
