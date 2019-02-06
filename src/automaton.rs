@@ -181,7 +181,7 @@ impl Automaton {
                     res_transitions.insert(Transition::new(*state_id, Some(*a), *found_state_id));
                 }
 
-                if !self.final_states.is_disjoint(&**s) {
+                if !self.final_states.is_disjoint(s) {
                     let state_id = found_set_states.get(s).unwrap();
                     res_final_states.insert(*state_id);
                 }
