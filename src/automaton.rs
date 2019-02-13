@@ -1,8 +1,7 @@
 use crate::transition::Transition;
 use crate::counter::Counter;
-use crate::hashable_set::HashableSet;
 
-use std::collections::{HashSet, HashMap};
+use std::collections::{BTreeSet, BTreeMap};
 
 // Build sets easily for easy testing and comparing
 macro_rules! set {
@@ -13,11 +12,11 @@ macro_rules! set {
 
 #[derive(Debug)]
 pub struct Automaton {
-    alphabet: HashSet<char>,
-    states: HashSet<u32>,
-    transitions: HashSet<Transition>,
-    final_states: HashSet<u32>,
-    initial_states: HashSet<u32>,
+    alphabet: BTreeSet<char>,
+    states: BTreeSet<u32>,
+    transitions: BTreeSet<Transition>,
+    final_states: BTreeSet<u32>,
+    initial_states: BTreeSet<u32>,
 
     // Counter to track what the next state's id will be
     counter: Counter
@@ -27,11 +26,11 @@ impl Automaton {
     pub fn new() -> Self {
         Automaton {
             // alphabet: alphabet::get_english(),
-            alphabet: HashSet::new(),
-            states: HashSet::new(),
-            transitions: HashSet::new(),
-            final_states: HashSet::new(),
-            initial_states: HashSet::new(),
+            alphabet: BTreeSet::new(),
+            states: BTreeSet::new(),
+            transitions: BTreeSet::new(),
+            final_states: BTreeSet::new(),
+            initial_states: BTreeSet::new(),
             counter: Counter::new()
         }
     }
@@ -128,23 +127,23 @@ impl Automaton {
     }
 
     fn make_deterministic(&mut self) {
-        let mut res_states: HashSet<HashableSet<u32>>;
-        let mut res_initial_states: HashSet<HashableSet<u32>>;
-        let mut res_final_states = HashSet::<u32>::new();
-        let mut res_transitions = HashSet::<Transition>::new();
+        let mut res_states: BTreeSet<BTreeSet<u32>>;
+        let mut res_initial_states: BTreeSet<BTreeSet<u32>>;
+        let mut res_final_states = BTreeSet::<u32>::new();
+        let mut res_transitions = BTreeSet::<Transition>::new();
 
-        let initial_epsilon_closure: HashableSet<u32> = self.epsilon_closure(&self.initial_states).into();
+        let initial_epsilon_closure: BTreeSet<u32> = self.epsilon_closure(&self.initial_states).into();
         res_initial_states = set![initial_epsilon_closure];
         res_states = res_initial_states.clone();
 
         let mut found_this_step = res_initial_states.clone();
-        let mut found_last_step: HashSet<HashableSet<u32>>;
+        let mut found_last_step: BTreeSet<BTreeSet<u32>>;
 
         // While making the automaton deterministic, we are finding
         // sets of states, which are themselves the new states.
         // In the process of doing so, we need to have the state sets and
         // their respective ids stored somewhere.
-        let mut found_set_states: HashMap<HashableSet<u32>, u32> = HashMap::new();
+        let mut found_set_states: BTreeMap<BTreeSet<u32>, u32> = BTreeMap::new();
         let mut set_states_counter = Counter::new();
 
         for s in &res_initial_states {
@@ -195,15 +194,15 @@ impl Automaton {
 
     // Returns the states that are reachable by a state
     // through a specific transition
-    fn reachable(&self, start_state: u32, wanted_label: Option<char>) -> HashSet<u32> {
+    fn reachable(&self, start_state: u32, wanted_label: Option<char>) -> BTreeSet<u32> {
         self.transitions.iter()
                         .filter(|s| s.from == start_state && s.label == wanted_label)
                         .map(|s| s.to)
                         .collect()
     }
 
-    fn reachable_from_set(&self, start_states: &HashSet<u32>, wanted_label: Option<char>) -> HashSet<u32> {
-        let mut res = HashSet::<u32>::new();
+    fn reachable_from_set(&self, start_states: &BTreeSet<u32>, wanted_label: Option<char>) -> BTreeSet<u32> {
+        let mut res = BTreeSet::<u32>::new();
 
         for s in start_states {
             res = res.union(&self.reachable(*s, wanted_label)).map(|&s| s).collect();
@@ -212,10 +211,10 @@ impl Automaton {
         res
     }
 
-    fn epsilon_closure(&self, starting_states: &HashSet<u32>) -> HashSet<u32> {
+    fn epsilon_closure(&self, starting_states: &BTreeSet<u32>) -> BTreeSet<u32> {
         let mut res = starting_states.clone();
         let mut found_this_step = starting_states.clone();
-        let mut found_last_step: HashSet<u32>;
+        let mut found_last_step: BTreeSet<u32>;
 
         while found_this_step.len() > 0 {
             found_last_step = found_this_step.clone();
@@ -339,9 +338,6 @@ mod tests {
     fn make_deterministic() {
         let mut automaton = Automaton::new();
 
-        // automaton.states.insert(0);
-        // automaton.states.insert(1);
-        // automaton.states.insert(2);
         automaton.alphabet = set!['a', 'b', 'c'];
         automaton.states = set![0, 1, 2];
         automaton.counter.value = 3;
