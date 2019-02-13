@@ -317,7 +317,6 @@ impl Automaton {
         let mut res_transitions = BTreeSet::<Transition>::new();
         let mut res_final_states = BTreeSet::<u32>::new();
         let mut res_initial_states = BTreeSet::<u32>::new();
-        let mut res_counter = Counter::new();
 
         for (group_id, group) in &current_groups {
             // TODO: Make this clearer
@@ -341,7 +340,7 @@ impl Automaton {
         self.initial_states = res_initial_states;
         self.final_states = res_final_states;
         self.transitions = res_transitions;
-        self.counter = res_counter;
+        self.counter = counter;
     }
 
     // Returns the states that are reachable by a state
@@ -551,6 +550,7 @@ mod tests {
         automaton.minimize();
 
         assert_eq!(automaton.states, set![0, 1]);
+        assert_eq!(automaton.counter.value, 2);
         assert_eq!(automaton.initial_states, set![0]);
         assert_eq!(automaton.final_states, set![1]);
         assert_eq!(automaton.transitions, set![
@@ -587,6 +587,7 @@ mod tests {
         automaton.minimize();
 
         assert_eq!(automaton.states, set![0, 1, 2]);
+        assert_eq!(automaton.counter.value, 3);
         assert_eq!(automaton.initial_states, set![0]);
         assert_eq!(automaton.final_states, set![2]);
         assert_eq!(automaton.transitions, set![
