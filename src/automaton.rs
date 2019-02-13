@@ -291,11 +291,6 @@ impl Automaton {
                     current_groups.insert(counter.tick(), new_group);
                 }
             }
-
-            println!("Prev groups: {:?}", prev_groups);
-            println!("Prev groups with transitions: {:?}", prev_groups_with_transitions);
-            println!("Current groups: {:?}", current_groups);
-            println!("");
         }
 
         let mut state_group_ids = BTreeMap::<u32, u32>::new();
@@ -317,8 +312,6 @@ impl Automaton {
                 }
             }
         }
-
-        println!("Current groups: {:?}", current_groups);
 
         let mut res_states = BTreeSet::<u32>::new();
         let mut res_transitions = BTreeSet::<Transition>::new();
@@ -592,8 +585,6 @@ mod tests {
         ];
 
         automaton.minimize();
-
-        println!("{:?}", automaton);
 
         assert_eq!(automaton.states, set![0, 1, 2]);
         assert_eq!(automaton.initial_states, set![0]);
