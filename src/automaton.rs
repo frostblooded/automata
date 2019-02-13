@@ -150,18 +150,12 @@ impl Automaton {
             found_set_states.insert(s.clone(), set_states_counter.tick());
         }
 
-        // This is a bit of a hack that forces the algorithm to process the states in the
-        // same order every time, which makes testing the method possible.
-        // TODO: Find a better way to do it
-        let mut sorted_alphabet = self.alphabet.iter().map(|&s| s).collect::<Vec<char>>();
-        sorted_alphabet.sort();
-
         while found_this_step.len() > 0 {
             found_last_step = found_this_step.clone();
             found_this_step.clear();
 
             for s in &found_last_step {
-                for a in &sorted_alphabet {
+                for a in &self.alphabet{
                     let reachable_with_letter = self.reachable_from_set(s, Some(*a));
                     let reachable_enclosed = self.epsilon_closure(&reachable_with_letter).into();
 
