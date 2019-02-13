@@ -15,4 +15,8 @@ impl Counter {
         self.value += 1;
         return_value
     }
+
+    pub fn reset(&mut self) {
+        self.value = 0;
+    }
 }
