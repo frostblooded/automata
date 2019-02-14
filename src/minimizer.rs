@@ -70,10 +70,12 @@ impl Minimizer {
             let group_transitions = group.iter().nth(0).unwrap().1.clone();
             res_states.insert(*group_id);
 
+            // If the group has final states, it will be final in the new automaton
             if group.iter().any(|(state, _)| self.automaton.final_states.contains(state)) {
                 res_final_states.insert(*group_id);
             }
 
+            // If the group has initial states, it will be initial in the new automaton
             if group.iter().any(|(state, _)| self.automaton.initial_states.contains(state)) {
                 res_initial_states.insert(*group_id);
             }

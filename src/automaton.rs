@@ -34,7 +34,7 @@ impl Automaton {
         }
     }
 
-    pub fn from_letter(letter: char) -> Self {
+    pub fn from_char(letter: char) -> Self {
         let mut automaton = Automaton::new();
         let state1 = automaton.counter.tick();
         let state2 = automaton.counter.tick();
@@ -46,6 +46,23 @@ impl Automaton {
 
         automaton.initial_states.insert(state1);
         automaton.final_states.insert(state2);
+
+        automaton
+    }
+
+    pub fn from_expression(expression: &str) -> Self {
+        let mut chars = expression.chars();
+        let first_char = chars.next();
+        let mut automaton: Automaton;
+
+        automaton = match first_char {
+            Some(ch) => Automaton::from_char(ch),
+            None     => Automaton::new()
+        };
+
+        for ch in chars {
+            automaton.concat(&Automaton::from_char(ch));
+        }
 
         automaton
     }
@@ -235,7 +252,7 @@ mod tests {
 
     #[test]
     fn create_from_letter() {
-        let automaton = Automaton::from_letter('a');
+        let automaton = Automaton::from_char('a');
 
         assert_eq!(automaton.alphabet, set!['a']);
         assert_eq!(automaton.states, set![0, 1]);
@@ -246,9 +263,27 @@ mod tests {
     }
 
     #[test]
+    fn create_from_expression() {
+        let automaton = Automaton::from_expression("abc");
+
+        assert_eq!(automaton.alphabet, set!['a', 'b', 'c']);
+        assert_eq!(automaton.states, set![0, 1, 2, 3, 4, 5]);
+        assert_eq!(automaton.initial_states, set![4]);
+        assert_eq!(automaton.final_states, set![1]);
+        assert_eq!(automaton.transitions, set![
+            Transition::new(4, Some('a'), 5),
+            Transition::new(5, None, 2),
+            Transition::new(2, Some('b'), 3),
+            Transition::new(3, None, 0),
+            Transition::new(0, Some('c'), 1)
+        ]);
+        assert_eq!(automaton.counter.value, 6);
+    }
+
+    #[test]
     fn union_automata() {
-        let mut automaton1 = Automaton::from_letter('a');
-        let automaton2 = Automaton::from_letter('b');
+        let mut automaton1 = Automaton::from_char('a');
+        let automaton2 = Automaton::from_char('b');
 
         automaton1.union(&automaton2);
 
@@ -265,8 +300,8 @@ mod tests {
 
     #[test]
     fn concat_automata() {
-        let mut automaton1 = Automaton::from_letter('a');
-        let automaton2 = Automaton::from_letter('b');
+        let mut automaton1 = Automaton::from_char('a');
+        let automaton2 = Automaton::from_char('b');
 
         automaton1.concat(&automaton2);
 
@@ -284,7 +319,7 @@ mod tests {
 
     #[test]
     fn kleene_automata() {
-        let mut automaton = Automaton::from_letter('a');
+        let mut automaton = Automaton::from_char('a');
 
         automaton.kleene();
 
@@ -302,7 +337,7 @@ mod tests {
 
     #[test]
     fn shift_states() {
-        let mut automaton = Automaton::from_letter('a');
+        let mut automaton = Automaton::from_char('a');
         automaton.shift_states(2);
 
         assert_eq!(automaton.states, set![2, 3]);
