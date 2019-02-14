@@ -35,9 +35,10 @@ impl Minimizer {
     fn fill_group_transitions(&self, mut groups: BTreeMap<u32, BTreeMap<u32, BTreeMap<char, u32>>>) -> BTreeMap<u32, BTreeMap<u32, BTreeMap<char, u32>>> {
         let mut state_group_ids = BTreeMap::<u32, u32>::new();
 
+        // Build a map that tells us which state is in which group
         for (_group_id, group) in &groups {
             for (state, _state_transitions) in group {
-                let group_with_state_id: u32 = Minimizer::find_group_with_state(&groups, *state).unwrap();
+                let group_with_state_id: u32 = Minimizer::find_group_with_state(&groups, *state).expect("Invalid groups");
                 state_group_ids.insert(*state, group_with_state_id);
             }
         }
@@ -46,14 +47,61 @@ impl Minimizer {
             for (state, state_transitions) in group {
                 for letter in &self.automaton.alphabet {
                     // This will be a single state if the automaton is deterministic
-                    let reachable_state: u32 = *self.automaton.reachable(*state, Some(*letter)).iter().nth(0).unwrap();
-                    let group_with_state_id = state_group_ids.get(&reachable_state).unwrap();
+                    let reachable_state: u32 = *self.automaton.reachable(*state, Some(*letter)).iter().nth(0).expect("Invalid groups");
+                    let group_with_state_id = state_group_ids.get(&reachable_state).expect("Invalid groups");
                     state_transitions.insert(*letter, *group_with_state_id);
                 }
             }
         }
 
         groups
+    }
+
+    fn build_automaton_from_groups(&mut self, groups: BTreeMap<u32, BTreeMap<u32, BTreeMap<char, u32>>>) {
+        let mut res_states = BTreeSet::<u32>::new();
+        let mut res_transitions = BTreeSet::<Transition>::new();
+        let mut res_final_states = BTreeSet::<u32>::new();
+        let mut res_initial_states = BTreeSet::<u32>::new();
+        self.automaton.counter.reset();
+
+        for (group_id, group) in &groups {
+            // We get the group's first state and it's transitions, because those are
+            // the transitions of the whole group.
+            let group_transitions = group.iter().nth(0).unwrap().1.clone();
+            res_states.insert(*group_id);
+
+            if group.iter().any(|(state, _)| self.automaton.final_states.contains(state)) {
+                res_final_states.insert(*group_id);
+            }
+
+            if group.iter().any(|(state, _)| self.automaton.initial_states.contains(state)) {
+                res_initial_states.insert(*group_id);
+            }
+
+            for (transition_letter, transition_to) in group_transitions {
+                res_transitions.insert(Transition::new(*group_id, Some(transition_letter), transition_to));
+            }
+
+            self.automaton.counter.value += 1;
+        }
+
+        self.automaton.states = res_states;
+        self.automaton.initial_states = res_initial_states;
+        self.automaton.final_states = res_final_states;
+        self.automaton.transitions = res_transitions;
+    }
+
+    fn find_states_with_same_transitions(group: &BTreeMap<u32, BTreeMap<char, u32>>) -> BTreeMap<BTreeMap<char, u32>, BTreeSet<u32>> {
+        let mut res = BTreeMap::<BTreeMap<char, u32>, BTreeSet<u32>>::new();
+
+        for (state, state_transitions) in group {
+            match res.get_mut(state_transitions) {
+                Some(val) => val.insert(*state),
+                None      => res.insert(state_transitions.clone(), set![*state]).is_some()
+            };
+        }
+
+        res
     }
 
     // This function assumes that the automaton is deterministic.
@@ -102,8 +150,8 @@ impl Minimizer {
 
         let mut prev_groups = BTreeMap::new();
 
-        // Now we spit into the next groups
-        // We look for states withing the groups that have the same transitions and group them into new groups
+        // Now we spit into the next groups. We look for states withing the groups
+        // that have the same transitions and group them into new groups.
         while prev_groups != current_groups {
             prev_groups = current_groups;
             let mut prev_groups_with_transitions = prev_groups.clone();
@@ -113,17 +161,9 @@ impl Minimizer {
             prev_groups_with_transitions = self.fill_group_transitions(prev_groups_with_transitions);
 
             for (_group_id, group) in &prev_groups_with_transitions {
-                // Find states with same transitions
-                let mut states_with_same_key = BTreeMap::<BTreeMap<char, u32>, BTreeSet<u32>>::new();
+                let states_with_same_transitions = Minimizer::find_states_with_same_transitions(&group);
 
-                for (state, state_transitions) in group {
-                    match states_with_same_key.get_mut(state_transitions) {
-                        Some(val) => val.insert(*state),
-                        None      => states_with_same_key.insert(state_transitions.clone(), set![*state]).is_some()
-                    };
-                }
-
-                for (_state_transition, states) in &states_with_same_key {
+                for (_state_transition, states) in &states_with_same_transitions {
                     let mut new_group = BTreeMap::new();
 
                     for state in states {
@@ -136,35 +176,7 @@ impl Minimizer {
         }
 
         current_groups = self.fill_group_transitions(current_groups);
-
-        let mut res_states = BTreeSet::<u32>::new();
-        let mut res_transitions = BTreeSet::<Transition>::new();
-        let mut res_final_states = BTreeSet::<u32>::new();
-        let mut res_initial_states = BTreeSet::<u32>::new();
-
-        for (group_id, group) in &current_groups {
-            // TODO: Make this clearer
-            let group_transitions = group.iter().nth(0).unwrap().1.clone();
-            res_states.insert(*group_id);
-
-            if group.iter().any(|(state, _)| self.automaton.final_states.contains(state)) {
-                res_final_states.insert(*group_id);
-            }
-
-            if group.iter().any(|(state, _)| self.automaton.initial_states.contains(state)) {
-                res_initial_states.insert(*group_id);
-            }
-
-            for (transition_letter, transition_to) in group_transitions {
-                res_transitions.insert(Transition::new(*group_id, Some(transition_letter), transition_to));
-            }
-        }
-
-        self.automaton.states = res_states;
-        self.automaton.initial_states = res_initial_states;
-        self.automaton.final_states = res_final_states;
-        self.automaton.transitions = res_transitions;
-        self.automaton.counter = counter;
+        self.build_automaton_from_groups(current_groups);
     }
 
     pub fn take(self) -> Automaton {
