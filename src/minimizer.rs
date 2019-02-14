@@ -32,6 +32,30 @@ impl Minimizer {
         None
     }
 
+    fn fill_group_transitions(&self, mut groups: BTreeMap<u32, BTreeMap<u32, BTreeMap<char, u32>>>) -> BTreeMap<u32, BTreeMap<u32, BTreeMap<char, u32>>> {
+        let mut state_group_ids = BTreeMap::<u32, u32>::new();
+
+        for (_group_id, group) in &groups {
+            for (state, _state_transitions) in group {
+                let group_with_state_id: u32 = Minimizer::find_group_with_state(&groups, *state).unwrap();
+                state_group_ids.insert(*state, group_with_state_id);
+            }
+        }
+
+        for (_group_id, group) in &mut groups {
+            for (state, state_transitions) in group {
+                for letter in &self.automaton.alphabet {
+                    // This will be a single state if the automaton is deterministic
+                    let reachable_state: u32 = *self.automaton.reachable(*state, Some(*letter)).iter().nth(0).unwrap();
+                    let group_with_state_id = state_group_ids.get(&reachable_state).unwrap();
+                    state_transitions.insert(*letter, *group_with_state_id);
+                }
+            }
+        }
+
+        groups
+    }
+
     // This function assumes that the automaton is deterministic.
     pub fn minimize(&mut self) {
         // There are the diffent groups that states are being split into during the steps of the
@@ -86,25 +110,7 @@ impl Minimizer {
             current_groups = BTreeMap::new();
             counter.reset();
 
-            let mut state_group_ids = BTreeMap::<u32, u32>::new();
-
-            for (_group_id, group) in &prev_groups_with_transitions {
-                for (state, _state_transitions) in group {
-                    let group_with_state_id: u32 = Minimizer::find_group_with_state(&prev_groups, *state).unwrap();
-                    state_group_ids.insert(*state, group_with_state_id);
-                }
-            }
-
-            for (_group_id, group) in &mut prev_groups_with_transitions {
-                for (state, state_transitions) in group {
-                    for letter in &self.automaton.alphabet {
-                        // This will be a single state if the automaton is deterministic
-                        let reachable_state: u32 = *self.automaton.reachable(*state, Some(*letter)).iter().nth(0).unwrap();
-                        let group_with_state_id = state_group_ids.get(&reachable_state).unwrap();
-                        state_transitions.insert(*letter, *group_with_state_id);
-                    }
-                }
-            }
+            prev_groups_with_transitions = self.fill_group_transitions(prev_groups_with_transitions);
 
             for (_group_id, group) in &prev_groups_with_transitions {
                 // Find states with same transitions
@@ -129,25 +135,7 @@ impl Minimizer {
             }
         }
 
-        let mut state_group_ids = BTreeMap::<u32, u32>::new();
-
-        for (_group_id, group) in &current_groups {
-            for (state, _state_transitions) in group {
-                let group_with_state_id: u32 = Minimizer::find_group_with_state(&prev_groups, *state).unwrap();
-                state_group_ids.insert(*state, group_with_state_id);
-            }
-        }
-
-        for (_group_id, group) in &mut current_groups {
-            for (state, state_transitions) in group {
-                for letter in &self.automaton.alphabet {
-                    // This will be a single state if the automaton is deterministic
-                    let reachable_state: u32 = *self.automaton.reachable(*state, Some(*letter)).iter().nth(0).unwrap();
-                    let group_with_state_id = state_group_ids.get(&reachable_state).unwrap();
-                    state_transitions.insert(*letter, *group_with_state_id);
-                }
-            }
-        }
+        current_groups = self.fill_group_transitions(current_groups);
 
         let mut res_states = BTreeSet::<u32>::new();
         let mut res_transitions = BTreeSet::<Transition>::new();
