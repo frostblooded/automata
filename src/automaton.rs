@@ -50,8 +50,8 @@ impl Automaton {
         automaton
     }
 
-    pub fn from_expression(expression: &str) -> Self {
-        let mut chars = expression.chars();
+    pub fn from_string(string: &str) -> Self {
+        let mut chars = string.chars();
         let first_char = chars.next();
         let mut automaton: Automaton;
 
@@ -149,7 +149,7 @@ impl Automaton {
         let mut res_transitions = BTreeSet::<Transition>::new();
 
         let initial_epsilon_closure: BTreeSet<u32> = self.epsilon_closure(&self.initial_states).into();
-        res_initial_states = set![initial_epsilon_closure];
+        res_initial_states = set![initial_epsilon_closure.clone()];
         res_states = res_initial_states.clone();
 
         let mut found_this_step = res_initial_states.clone();
@@ -198,6 +198,7 @@ impl Automaton {
         }
 
         self.states = found_set_states.values().map(|&s| s).collect();
+        self.initial_states = set![*found_set_states.get(&initial_epsilon_closure).unwrap()];
         self.final_states = res_final_states;
         self.transitions = res_transitions;
     }
@@ -263,8 +264,8 @@ mod tests {
     }
 
     #[test]
-    fn create_from_expression() {
-        let automaton = Automaton::from_expression("abc");
+    fn create_from_string() {
+        let automaton = Automaton::from_string("abc");
 
         assert_eq!(automaton.alphabet, set!['a', 'b', 'c']);
         assert_eq!(automaton.states, set![0, 1, 2, 3, 4, 5]);
@@ -366,37 +367,35 @@ mod tests {
     fn determinize() {
         let mut automaton = Automaton::new();
 
-        automaton.alphabet = set!['a', 'b', 'c'];
+        automaton.alphabet = set!['a', 'b'];
         automaton.states = set![0, 1, 2];
         automaton.counter.value = 3;
 
-        automaton.initial_states = set![0];
-
-        automaton.final_states = set![2];
+        automaton.initial_states = set![2];
+        automaton.final_states = set![0];
 
         automaton.transitions = set![
             Transition::new(0, Some('a'), 1),
-            Transition::new(1, Some('b'), 0),
-            Transition::new(1, None, 2),
-            Transition::new(2, None, 1),
-            Transition::new(2, Some('c'), 0)
+            Transition::new(0, Some('b'), 2),
+            Transition::new(0, None, 1),
+            Transition::new(1, Some('b'), 1),
+            Transition::new(1, None, 0),
+            Transition::new(2, Some('a'), 2),
+            Transition::new(2, Some('b'), 1)
         ];
 
         automaton.determinize();
 
         assert_eq!(automaton.states, set![0, 1, 2]);
         assert_eq!(automaton.initial_states, set![0]);
-        assert_eq!(automaton.final_states, set![1]);
+        assert_eq!(automaton.final_states, set![1, 2]);
         assert_eq!(automaton.transitions, set![
-            Transition::new(0, Some('a'), 1),
-            Transition::new(0, Some('b'), 2),
-            Transition::new(0, Some('c'), 2),
-            Transition::new(1, Some('a'), 2),
-            Transition::new(1, Some('b'), 0),
-            Transition::new(1, Some('c'), 0),
+            Transition::new(0, Some('a'), 0),
+            Transition::new(0, Some('b'), 1),
+            Transition::new(1, Some('a'), 1),
+            Transition::new(1, Some('b'), 2),
             Transition::new(2, Some('a'), 2),
-            Transition::new(2, Some('b'), 2),
-            Transition::new(2, Some('c'), 2)
+            Transition::new(2, Some('b'), 2)
         ]);
     }
 }

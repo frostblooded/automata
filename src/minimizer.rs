@@ -162,6 +162,8 @@ impl Minimizer {
 
             prev_groups_with_transitions = self.fill_group_transitions(prev_groups_with_transitions);
 
+            println!("Groups: {:?}", prev_groups_with_transitions);
+
             for (_group_id, group) in &prev_groups_with_transitions {
                 let states_with_same_transitions = Minimizer::find_states_with_same_transitions(&group);
 
@@ -192,7 +194,6 @@ mod tests {
 
     #[test]
     fn minimize_1() {
-        // return;
         let mut automaton = Automaton::new();
 
         automaton.alphabet = set!['a', 'b'];
