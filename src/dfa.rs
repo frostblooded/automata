@@ -38,8 +38,49 @@ impl DFA {
 
         None
     }
+
+    pub(crate) fn matches(&self, text: &str) -> bool {
+        let mut current_state;
+
+        match self.initial_state {
+            Some(state) => current_state = state,
+            None        => return false
+        }
+
+        for ch in text.chars() {
+            match self.reachable(current_state, ch) {
+                Some(state) => current_state = state,
+                None        => return false
+            }
+        }
+
+        return self.final_states.contains(&current_state);
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn matches_plain_text() {
+        let mut dfa = DFA::new();
+        dfa.alphabet = set!['a', 'b'];
+        dfa.states = set![0, 1, 2, 3];
+        dfa.counter.value = 4;
+        dfa.initial_state = Some(0);
+        dfa.final_states = set![2];
+        dfa.transitions = set![
+            Transition::new(0, 'a', 1),
+            Transition::new(0, 'b', 3),
+            Transition::new(1, 'a', 3),
+            Transition::new(1, 'b', 2),
+            Transition::new(2, 'a', 3),
+            Transition::new(2, 'b', 3),
+            Transition::new(3, 'a', 3),
+            Transition::new(3, 'b', 3)
+        ];
+
+        assert!(dfa.matches("ab"));
+    }
 }

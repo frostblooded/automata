@@ -19,6 +19,10 @@ impl Expression {
             dfa: dfa
         }
     }
+
+    pub fn matches(&self, text: &str) -> bool {
+        self.dfa.matches(text)
+    }
 }
 
 #[cfg(test)]
