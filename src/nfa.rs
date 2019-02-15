@@ -1,6 +1,9 @@
 use crate::transition::Transition;
 use crate::counter::Counter;
 
+use std::iter::Peekable;
+use std::str::Chars;
+
 use std::collections::BTreeSet;
 
 #[derive(Debug)]
@@ -43,18 +46,57 @@ impl NFA {
         nfa
     }
 
+    pub fn from_optional_char(letter: char) -> Self {
+        let mut nfa = NFA::new();
+        let state1 = nfa.counter.tick();
+        let state2 = nfa.counter.tick();
+
+        nfa.alphabet.insert(letter);
+        nfa.states.insert(state1);
+        nfa.states.insert(state2);
+        nfa.transitions.insert(Transition::new(state1, Some(letter), state2));
+        nfa.transitions.insert(Transition::new(state1, None, state2));
+
+        nfa.initial_states.insert(state1);
+        nfa.final_states.insert(state2);
+
+        nfa
+    }
+
+    // You pass the current char that is being processed to this function and the
+    // chars iterator that is being iterated over. The function peeks into the next
+    // chars and decides how to handle the current char.
+    // For example if the next items in the iterator are normal letters, it returns
+    // an automaton that matches only the current letter. If, however, the next char is
+    // '?', it returns an automata that mathes both the current letter and it's absence,
+    // so it optionally matches the current letter.
+    fn from_chars_iterator(current_char: char, iterator: &mut Peekable<Chars>) -> NFA {
+        match iterator.peek() {
+            Some(&next) => {
+                match next {
+                    '?' => {
+                        iterator.next();
+                        NFA::from_optional_char(current_char)
+                    }
+                    _   => NFA::from_char(current_char)
+                }
+            },
+            None => NFA::from_char(current_char)
+        }
+    }
+
     pub fn from_string(string: &str) -> Self {
-        let mut chars = string.chars();
+        let mut chars = string.chars().peekable();
         let first_char = chars.next();
         let mut nfa: NFA;
 
         nfa = match first_char {
-            Some(ch) => NFA::from_char(ch),
-            None     => NFA::new()
+            Some(ch) => NFA::from_chars_iterator(ch, &mut chars),
+            None => NFA::new()
         };
 
-        for ch in chars {
-            nfa.concat(&NFA::from_char(ch));
+        while let Some(ch) = chars.next() {
+            nfa.concat(&NFA::from_chars_iterator(ch, &mut chars));
         }
 
         nfa
@@ -150,7 +192,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn create_from_letter() {
+    fn create_from_char() {
         let nfa = NFA::from_char('a');
 
         assert_eq!(nfa.alphabet, set!['a']);
@@ -162,7 +204,22 @@ mod tests {
     }
 
     #[test]
-    fn create_from_string() {
+    fn create_from_optional_char() {
+        let nfa = NFA::from_optional_char('a');
+
+        assert_eq!(nfa.alphabet, set!['a']);
+        assert_eq!(nfa.states, set![0, 1]);
+        assert_eq!(nfa.initial_states, set![0]);
+        assert_eq!(nfa.final_states, set![1]);
+        assert_eq!(nfa.transitions, set![
+            Transition::new(0, Some('a'), 1),
+            Transition::new(0, None, 1)
+        ]);
+        assert_eq!(nfa.counter.value, 2);
+    }
+
+    #[test]
+    fn create_from_plain_string() {
         let nfa = NFA::from_string("abc");
 
         assert_eq!(nfa.alphabet, set!['a', 'b', 'c']);
@@ -177,6 +234,23 @@ mod tests {
             Transition::new(0, Some('c'), 1)
         ]);
         assert_eq!(nfa.counter.value, 6);
+    }
+
+    #[test]
+    fn create_from_string_with_optional_chars() {
+        let nfa = NFA::from_string("ab?");
+
+        assert_eq!(nfa.alphabet, set!['a', 'b']);
+        assert_eq!(nfa.states, set![0, 1, 2, 3]);
+        assert_eq!(nfa.initial_states, set![2]);
+        assert_eq!(nfa.final_states, set![1]);
+        assert_eq!(nfa.transitions, set![
+            Transition::new(2, Some('a'), 3),
+            Transition::new(3, None, 0),
+            Transition::new(0, Some('b'), 1),
+            Transition::new(0, None, 1)
+        ]);
+        assert_eq!(nfa.counter.value, 4);
     }
 
     #[test]

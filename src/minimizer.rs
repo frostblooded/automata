@@ -157,6 +157,8 @@ impl Minimizer {
 
             prev_groups_with_transitions = self.fill_group_transitions(prev_groups_with_transitions);
 
+            // println!("Groups {:?}\n", prev_groups_with_transitions);
+
             for (_group_id, group) in &prev_groups_with_transitions {
                 let states_with_same_transitions = Minimizer::find_states_with_same_transitions(&group);
 
