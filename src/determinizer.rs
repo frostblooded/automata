@@ -19,7 +19,7 @@ impl Determinizer {
         let mut res_states: BTreeSet<BTreeSet<u32>>;
         let mut res_initial_states: BTreeSet<BTreeSet<u32>>;
         let mut res_final_states = BTreeSet::<u32>::new();
-        let mut res_transitions = BTreeSet::<Transition>::new();
+        let mut res_transitions = BTreeSet::<Transition<Option<char>>>::new();
 
         let initial_epsilon_closure: BTreeSet<u32> = self.epsilon_closure(&self.nfa.initial_states).into();
         res_initial_states = set![initial_epsilon_closure.clone()];

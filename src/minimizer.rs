@@ -52,7 +52,7 @@ impl Minimizer {
 
     fn build_nfa_from_groups(&mut self, groups: BTreeMap<u32, BTreeMap<u32, BTreeMap<char, u32>>>) {
         let mut res_states = BTreeSet::<u32>::new();
-        let mut res_transitions = BTreeSet::<Transition>::new();
+        let mut res_transitions = BTreeSet::<Transition<Option<char>>>::new();
         let mut res_final_states = BTreeSet::<u32>::new();
         let mut res_initial_states = BTreeSet::<u32>::new();
         self.nfa.counter.reset();

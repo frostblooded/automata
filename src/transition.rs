@@ -1,14 +1,14 @@
 use std::cmp::Ordering;
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub struct Transition {
+pub struct Transition<T> {
     pub from: u32,
-    pub label: Option<char>,
+    pub label: T,
     pub to: u32
 }
 
-impl Transition {
-    pub fn new(new_from: u32, new_label: Option<char>, new_to: u32) -> Self {
+impl<T> Transition<T> {
+    pub fn new(new_from: u32, new_label: T, new_to: u32) -> Self {
         Transition {
             from: new_from,
             label: new_label,
@@ -17,8 +17,8 @@ impl Transition {
     }
 }
 
-impl Ord for Transition {
-    fn cmp(&self, other: &Transition) -> Ordering {
+impl<T: PartialEq + Eq + Ord> Ord for Transition<T> {
+    fn cmp(&self, other: &Transition<T>) -> Ordering {
         let from_cmp = self.from.cmp(&other.from);
         
         if from_cmp == Ordering::Equal {
@@ -37,8 +37,8 @@ impl Ord for Transition {
     }
 }
 
-impl PartialOrd for Transition {
-    fn partial_cmp(&self, other: &Transition) -> Option<Ordering> {
+impl<T: PartialEq + Eq + Ord> PartialOrd for Transition<T> {
+    fn partial_cmp(&self, other: &Transition<T>) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }

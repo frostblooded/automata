@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 pub struct NFA {
     pub(crate) alphabet: BTreeSet<char>,
     pub(crate) states: BTreeSet<u32>,
-    pub(crate) transitions: BTreeSet<Transition>,
+    pub(crate) transitions: BTreeSet<Transition<Option<char>>>,
     pub(crate) final_states: BTreeSet<u32>,
     pub(crate) initial_states: BTreeSet<u32>,
 
