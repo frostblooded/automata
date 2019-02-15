@@ -4,13 +4,6 @@ use crate::counter::Counter;
 
 use std::collections::{BTreeSet, BTreeMap};
 
-// Build sets easily for easy testing and comparing
-macro_rules! set {
-    [$($x:expr),+] => {
-        [$($x,)+].iter().map(|x| x.clone()).collect()
-    }
-}
-
 pub struct Determinizer {
     automaton: Automaton
 }    

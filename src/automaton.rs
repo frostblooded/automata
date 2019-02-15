@@ -3,13 +3,6 @@ use crate::counter::Counter;
 
 use std::collections::BTreeSet;
 
-// Build sets easily for easy testing and comparing
-macro_rules! set {
-    [$($x:expr),+] => {
-        [$($x,)+].iter().map(|x| x.clone()).collect()
-    }
-}
-
 #[derive(Debug)]
 pub struct Automaton {
     pub(crate) alphabet: BTreeSet<char>,

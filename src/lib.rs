@@ -1,3 +1,5 @@
+#[macro_use]
+mod helpers;
 mod counter;
 
 pub mod automaton;
