@@ -63,6 +63,23 @@ impl NFA {
         nfa
     }
 
+    pub fn from_plus_char(letter: char) -> Self {
+        let mut nfa = NFA::new();
+        let state1 = nfa.counter.tick();
+        let state2 = nfa.counter.tick();
+
+        nfa.alphabet.insert(letter);
+        nfa.states.insert(state1);
+        nfa.states.insert(state2);
+        nfa.transitions.insert(Transition::new(state1, Some(letter), state2));
+        nfa.transitions.insert(Transition::new(state2, Some(letter), state2));
+
+        nfa.initial_states.insert(state1);
+        nfa.final_states.insert(state2);
+
+        nfa
+    }
+
     // You pass the current char that is being processed to this function and the
     // chars iterator that is being iterated over. The function peeks into the next
     // chars and decides how to handle the current char.
@@ -84,6 +101,10 @@ impl NFA {
                         let mut automata = NFA::from_char(current_char);
                         automata.kleene();
                         automata
+                    },
+                    '+' => {
+                        iterator.next();
+                        NFA::from_plus_char(current_char)
                     },
                     _   => NFA::from_char(current_char)
                 }
@@ -230,6 +251,21 @@ mod tests {
     }
 
     #[test]
+    fn create_from_plus_char() {
+        let nfa = NFA::from_plus_char('a');
+
+        assert_eq!(nfa.alphabet, set!['a']);
+        assert_eq!(nfa.states, set![0, 1]);
+        assert_eq!(nfa.initial_states, set![0]);
+        assert_eq!(nfa.final_states, set![1]);
+        assert_eq!(nfa.transitions, set![
+            Transition::new(0, Some('a'), 1),
+            Transition::new(1, Some('a'), 1)
+        ]);
+        assert_eq!(nfa.counter.value, 2);
+    }
+
+    #[test]
     fn create_from_plain_string() {
         let nfa = NFA::from_string("abc");
 
@@ -282,6 +318,25 @@ mod tests {
             Transition::new(5, None, 2)
         ]);
         assert_eq!(nfa.counter.value, 6);
+    }
+
+    #[test]
+    fn create_from_string_with_plus_chars() {
+        let nfa = NFA::from_string("a+b");
+
+        println!("{:?}", nfa);
+
+        assert_eq!(nfa.alphabet, set!['a', 'b']);
+        assert_eq!(nfa.states, set![0, 1, 2, 3]);
+        assert_eq!(nfa.initial_states, set![2]);
+        assert_eq!(nfa.final_states, set![1]);
+        assert_eq!(nfa.transitions, set![
+            Transition::new(0, Some('b'), 1),
+            Transition::new(2, Some('a'), 3),
+            Transition::new(3, None, 0),
+            Transition::new(3, Some('a'), 3)
+        ]);
+        assert_eq!(nfa.counter.value, 4);
     }
 
     #[test]
