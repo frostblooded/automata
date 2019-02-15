@@ -142,37 +142,21 @@ impl NFA {
         self.shift_states(other.counter.value);
         self.counter.value += other.counter.value;
 
-        self.alphabet = self.alphabet.union(&other.alphabet)
-                                     .map(|&a| a)
-                                     .collect();
-        self.states = self.states.union(&other.states)
-                                 .map(|&s| s)
-                                 .collect();
-        self.initial_states = self.initial_states.union(&other.initial_states)
-                                                 .map(|&s| s)
-                                                 .collect();
-        self.final_states = self.final_states.union(&other.final_states)
-                                             .map(|&s| s)
-                                             .collect();
-        self.transitions = self.transitions.union(&other.transitions)
-                                           .map(|&s| s)
-                                           .collect();
+        self.alphabet = self.alphabet.union(&other.alphabet).cloned().collect();
+        self.states = self.states.union(&other.states).cloned().collect();
+        self.initial_states = self.initial_states.union(&other.initial_states).cloned().collect();
+        self.final_states = self.final_states.union(&other.final_states).cloned().collect();
+        self.transitions = self.transitions.union(&other.transitions).cloned().collect();
     }
 
     pub fn concat(&mut self, other: &NFA) {
         self.shift_states(other.counter.value);
         self.counter.value += other.counter.value;
 
-        self.alphabet = self.alphabet.union(&other.alphabet)
-                                     .map(|&a| a)
-                                     .collect();
-        self.states = self.states.union(&other.states)
-                                 .map(|&s| s)
-                                 .collect();
+        self.alphabet = self.alphabet.union(&other.alphabet).cloned().collect();
+        self.states = self.states.union(&other.states).cloned().collect();
 
-        self.transitions = self.transitions.union(&other.transitions)
-                                           .map(|&s| s)
-                                           .collect();
+        self.transitions = self.transitions.union(&other.transitions).cloned().collect();
 
         for f in &self.final_states {
             for i in &other.initial_states {

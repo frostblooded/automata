@@ -74,7 +74,7 @@ impl Determinizer {
         let mut dfa = DFA::new();
 
         dfa.alphabet = self.nfa.alphabet.clone();
-        dfa.states = found_set_states.values().map(|&s| s).collect();
+        dfa.states = found_set_states.values().cloned().collect();
         dfa.initial_state = Some(0);
         dfa.final_states = res_final_states;
         dfa.transitions = res_transitions;
@@ -88,7 +88,7 @@ impl Determinizer {
         let mut res = BTreeSet::<u32>::new();
 
         for s in start_states {
-            res = res.union(&self.nfa.reachable(*s, wanted_label)).map(|&s| s).collect();
+            res = res.union(&self.nfa.reachable(*s, wanted_label)).cloned().collect();
         }
 
         res
