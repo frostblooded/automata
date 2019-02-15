@@ -1,31 +1,32 @@
 use crate::nfa::NFA;
+use crate::dfa::DFA;
 use crate::transition::Transition;
 use crate::counter::Counter;
 
 use std::collections::{BTreeSet, BTreeMap};
 
 pub struct Determinizer {
-    nfa: NFA
+    nfa: NFA,
+    dfa: DFA
 }    
 
 impl Determinizer {
     pub fn new(new_nfa: NFA) -> Self {
         Determinizer {
-            nfa: new_nfa
+            nfa: new_nfa,
+            dfa: DFA::new()
         }
     }
 
     pub fn determinize(mut self) -> Self {
         let mut res_states: BTreeSet<BTreeSet<u32>>;
-        let mut res_initial_states: BTreeSet<BTreeSet<u32>>;
         let mut res_final_states = BTreeSet::<u32>::new();
-        let mut res_transitions = BTreeSet::<Transition<Option<char>>>::new();
+        let mut res_transitions = BTreeSet::<Transition<char>>::new();
 
         let initial_epsilon_closure: BTreeSet<u32> = self.epsilon_closure(&self.nfa.initial_states).into();
-        res_initial_states = set![initial_epsilon_closure.clone()];
-        res_states = res_initial_states.clone();
+        res_states = set![initial_epsilon_closure.clone()];
 
-        let mut found_this_step = res_initial_states.clone();
+        let mut found_this_step = res_states.clone();
         let mut found_last_step: BTreeSet<BTreeSet<u32>>;
 
         // While making the automaton deterministic, we are finding
@@ -35,7 +36,7 @@ impl Determinizer {
         let mut found_set_states: BTreeMap<BTreeSet<u32>, u32> = BTreeMap::new();
         let mut set_states_counter = Counter::new();
 
-        for s in &res_initial_states {
+        for s in &res_states {
             found_set_states.insert(s.clone(), set_states_counter.tick());
         }
 
@@ -60,7 +61,7 @@ impl Determinizer {
                     let found_state_id = found_set_states.get(&reachable_enclosed).unwrap();
                     let state_id = found_set_states.get(s).unwrap();
 
-                    res_transitions.insert(Transition::new(*state_id, Some(*a), *found_state_id));
+                    res_transitions.insert(Transition::new(*state_id, *a, *found_state_id));
                 }
 
                 if !self.nfa.final_states.is_disjoint(s) {
@@ -70,11 +71,16 @@ impl Determinizer {
             }
         }
 
-        self.nfa.states = found_set_states.values().map(|&s| s).collect();
-        self.nfa.initial_states = set![*found_set_states.get(&initial_epsilon_closure).unwrap()];
-        self.nfa.final_states = res_final_states;
-        self.nfa.transitions = res_transitions;
+        let mut dfa = DFA::new();
 
+        dfa.alphabet = self.nfa.alphabet.clone();
+        dfa.states = found_set_states.values().map(|&s| s).collect();
+        dfa.initial_state = Some(0);
+        dfa.final_states = res_final_states;
+        dfa.transitions = res_transitions;
+        dfa.counter = set_states_counter;
+
+        self.dfa = dfa;
         self
     }
 
@@ -112,8 +118,8 @@ impl Determinizer {
         res
     }
 
-    pub fn take(self) -> NFA {
-        self.nfa
+    pub fn take(self) -> DFA {
+        self.dfa
     }
 }
 
@@ -160,18 +166,20 @@ mod tests {
             Transition::new(2, Some('b'), 1)
         ];
 
-        nfa = Determinizer::new(nfa).determinize().take();
+        let dfa = Determinizer::new(nfa).determinize().take();
 
-        assert_eq!(nfa.states, set![0, 1, 2]);
-        assert_eq!(nfa.initial_states, set![0]);
-        assert_eq!(nfa.final_states, set![1, 2]);
-        assert_eq!(nfa.transitions, set![
-            Transition::new(0, Some('a'), 0),
-            Transition::new(0, Some('b'), 1),
-            Transition::new(1, Some('a'), 1),
-            Transition::new(1, Some('b'), 2),
-            Transition::new(2, Some('a'), 2),
-            Transition::new(2, Some('b'), 2)
+        assert_eq!(dfa.alphabet, set!['a', 'b']);
+        assert_eq!(dfa.states, set![0, 1, 2]);
+        assert_eq!(dfa.counter.value, 3);
+        assert_eq!(dfa.initial_state, Some(0));
+        assert_eq!(dfa.final_states, set![1, 2]);
+        assert_eq!(dfa.transitions, set![
+            Transition::new(0, 'a', 0),
+            Transition::new(0, 'b', 1),
+            Transition::new(1, 'a', 1),
+            Transition::new(1, 'b', 2),
+            Transition::new(2, 'a', 2),
+            Transition::new(2, 'b', 2)
         ]);
     }
 }
