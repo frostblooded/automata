@@ -39,7 +39,6 @@ impl Minimizer {
         for (_group_id, group) in &mut groups {
             for (state, state_transitions) in group {
                 for letter in &self.dfa.alphabet {
-                    // This will be a single state if the automaton is deterministic
                     let reachable_state: u32 = self.dfa.reachable(*state, *letter).expect("Automaton is not total");
                     let group_with_state_id = state_group_ids.get(&reachable_state).expect("Invalid groups");
                     state_transitions.insert(*letter, *group_with_state_id);
@@ -70,7 +69,7 @@ impl Minimizer {
         for (group_id, group) in &groups {
             // We get the group's first state and it's transitions, because those are
             // the transitions of the whole group.
-            let group_transitions = group.iter().nth(0).unwrap().1.clone();
+            let group_transitions = group.iter().nth(0).expect("Empty group").1.clone();
             res_states.insert(*group_id);
 
             // If the group has final states, it will be final in the new automaton
