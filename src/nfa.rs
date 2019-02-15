@@ -77,7 +77,14 @@ impl NFA {
                     '?' => {
                         iterator.next();
                         NFA::from_optional_char(current_char)
-                    }
+                    },
+                    '*' => {
+                        iterator.next();
+
+                        let mut automata = NFA::from_char(current_char);
+                        automata.kleene();
+                        automata
+                    },
                     _   => NFA::from_char(current_char)
                 }
             },
@@ -156,13 +163,17 @@ impl NFA {
 
         for f in &self.final_states {
             self.transitions.insert(Transition::new(*f, None, new_final_state));
+
+            for i in &self.initial_states {
+                self.transitions.insert(Transition::new(*f, None, *i));
+            }
         }
 
         for i in &self.initial_states {
             self.transitions.insert(Transition::new(new_initial_state, None, *i));
         }
 
-        self.transitions.insert(Transition::new(new_final_state, None, new_initial_state));
+        self.transitions.insert(Transition::new(new_initial_state, None, new_final_state));
         self.initial_states = set![new_initial_state];
         self.final_states = set![new_final_state];
     }
@@ -254,6 +265,26 @@ mod tests {
     }
 
     #[test]
+    fn create_from_string_with_kleene_chars() {
+        let nfa = NFA::from_string("ca*");
+
+        assert_eq!(nfa.alphabet, set!['c', 'a']);
+        assert_eq!(nfa.states, set![0, 1, 2, 3, 4, 5]);
+        assert_eq!(nfa.initial_states, set![4]);
+        assert_eq!(nfa.final_states, set![3]);
+        assert_eq!(nfa.transitions, set![
+            Transition::new(0, Some('a'), 1),
+            Transition::new(1, None, 0),
+            Transition::new(1, None, 3),
+            Transition::new(2, None, 0),
+            Transition::new(2, None, 3),
+            Transition::new(4, Some('c'), 5),
+            Transition::new(5, None, 2)
+        ]);
+        assert_eq!(nfa.counter.value, 6);
+    }
+
+    #[test]
     fn union_automata() {
         let mut nfa1 = NFA::from_char('a');
         let nfa2 = NFA::from_char('b');
@@ -301,9 +332,10 @@ mod tests {
         assert_eq!(nfa.final_states, set![3]);
         assert_eq!(nfa.transitions, set![
             Transition::new(0, Some('a'), 1),
+            Transition::new(1, None, 0),
             Transition::new(1, None, 3),
-            Transition::new(3, None, 2),
-            Transition::new(2, None, 0)
+            Transition::new(2, None, 0),
+            Transition::new(2, None, 3)
         ]);
         assert_eq!(nfa.counter.value, 4);
     }
