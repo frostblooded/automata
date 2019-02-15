@@ -58,15 +58,15 @@ impl Determinizer {
                         }
                     }
 
-                    let found_state_id = found_set_states.get(&reachable_enclosed).unwrap();
-                    let state_id = found_set_states.get(s).unwrap();
+                    let found_state_id = found_set_states[&reachable_enclosed];
+                    let state_id = found_set_states[s];
 
-                    res_transitions.insert(Transition::new(*state_id, *a, *found_state_id));
+                    res_transitions.insert(Transition::new(state_id, *a, found_state_id));
                 }
 
                 if !self.nfa.final_states.is_disjoint(s) {
-                    let state_id = found_set_states.get(s).unwrap();
-                    res_final_states.insert(*state_id);
+                    let state_id = found_set_states[s];
+                    res_final_states.insert(state_id);
                 }
             }
         }

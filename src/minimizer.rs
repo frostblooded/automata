@@ -15,7 +15,7 @@ impl Minimizer {
         }
     }
 
-    fn find_group_with_state(groups: &BTreeMap<u32, BTreeMap<u32, BTreeMap<char, u32>>>, state: u32) -> Option<u32>{
+    fn find_group_with_state(groups: &BTreeMap<u32, BTreeMap<u32, BTreeMap<char, u32>>>, state: u32) -> Option<u32> {
         for (group_id, group) in groups {
             if group.get(&state).is_some() {
                 return Some(*group_id);
@@ -40,8 +40,8 @@ impl Minimizer {
             for (state, state_transitions) in group {
                 for letter in &self.dfa.alphabet {
                     let reachable_state: u32 = self.dfa.reachable(*state, *letter).expect("Automaton is not total");
-                    let group_with_state_id = state_group_ids.get(&reachable_state).expect("Invalid groups");
-                    state_transitions.insert(*letter, *group_with_state_id);
+                    let group_with_state_id = state_group_ids[&reachable_state];
+                    state_transitions.insert(*letter, group_with_state_id);
                 }
             }
         }
