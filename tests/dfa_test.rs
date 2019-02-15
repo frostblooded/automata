@@ -78,4 +78,30 @@ mod tests {
         assert!(!expression.matches("ba"));
         assert!(!expression.matches("abc"));
     }
+
+    #[test]
+    fn match_text_with_realistic_example_1() {
+        let expression = Expression::new("Ivan|Petq");
+
+        assert!(expression.matches("Ivan"));
+        assert!(expression.matches("Petq"));
+        assert!(!expression.matches("Petar"));
+        assert!(!expression.matches("Niki"));
+    }
+
+    #[test]
+    fn match_text_with_realistic_example_2() {
+        let expression = Expression::new("a+bc*|ca*");
+
+        assert!(expression.matches("ab"));
+        assert!(expression.matches("abc"));
+        assert!(expression.matches("aaabcc"));
+        assert!(expression.matches("abc"));
+        assert!(expression.matches("abcccc"));
+        assert!(expression.matches("c"));
+        assert!(expression.matches("ca"));
+        assert!(expression.matches("caaa"));
+        assert!(!expression.matches("b"));
+        assert!(!expression.matches("bc"));
+    }
 }
