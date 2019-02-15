@@ -1,17 +1,17 @@
-use crate::automaton::Automaton;
+use crate::nfa::NFA;
 use crate::transition::Transition;
 use crate::counter::Counter;
 
 use std::collections::{BTreeSet, BTreeMap};
 
 pub struct Minimizer {
-    automaton: Automaton
+    nfa: NFA
 }    
 
 impl Minimizer {
-    pub fn new(new_automaton: Automaton) -> Self {
+    pub fn new(new_nfa: NFA) -> Self {
         Minimizer {
-            automaton: new_automaton
+            nfa: new_nfa
         }
     }
 
@@ -38,9 +38,9 @@ impl Minimizer {
 
         for (_group_id, group) in &mut groups {
             for (state, state_transitions) in group {
-                for letter in &self.automaton.alphabet {
+                for letter in &self.nfa.alphabet {
                     // This will be a single state if the automaton is deterministic
-                    let reachable_state: u32 = *self.automaton.reachable(*state, Some(*letter)).iter().nth(0).expect("Invalid groups");
+                    let reachable_state: u32 = *self.nfa.reachable(*state, Some(*letter)).iter().nth(0).expect("Invalid groups");
                     let group_with_state_id = state_group_ids.get(&reachable_state).expect("Invalid groups");
                     state_transitions.insert(*letter, *group_with_state_id);
                 }
@@ -50,12 +50,12 @@ impl Minimizer {
         groups
     }
 
-    fn build_automaton_from_groups(&mut self, groups: BTreeMap<u32, BTreeMap<u32, BTreeMap<char, u32>>>) {
+    fn build_nfa_from_groups(&mut self, groups: BTreeMap<u32, BTreeMap<u32, BTreeMap<char, u32>>>) {
         let mut res_states = BTreeSet::<u32>::new();
         let mut res_transitions = BTreeSet::<Transition>::new();
         let mut res_final_states = BTreeSet::<u32>::new();
         let mut res_initial_states = BTreeSet::<u32>::new();
-        self.automaton.counter.reset();
+        self.nfa.counter.reset();
 
         for (group_id, group) in &groups {
             // We get the group's first state and it's transitions, because those are
@@ -64,12 +64,12 @@ impl Minimizer {
             res_states.insert(*group_id);
 
             // If the group has final states, it will be final in the new automaton
-            if group.iter().any(|(state, _)| self.automaton.final_states.contains(state)) {
+            if group.iter().any(|(state, _)| self.nfa.final_states.contains(state)) {
                 res_final_states.insert(*group_id);
             }
 
             // If the group has initial states, it will be initial in the new automaton
-            if group.iter().any(|(state, _)| self.automaton.initial_states.contains(state)) {
+            if group.iter().any(|(state, _)| self.nfa.initial_states.contains(state)) {
                 res_initial_states.insert(*group_id);
             }
 
@@ -77,13 +77,13 @@ impl Minimizer {
                 res_transitions.insert(Transition::new(*group_id, Some(transition_letter), transition_to));
             }
 
-            self.automaton.counter.value += 1;
+            self.nfa.counter.value += 1;
         }
 
-        self.automaton.states = res_states;
-        self.automaton.initial_states = res_initial_states;
-        self.automaton.final_states = res_final_states;
-        self.automaton.transitions = res_transitions;
+        self.nfa.states = res_states;
+        self.nfa.initial_states = res_initial_states;
+        self.nfa.final_states = res_final_states;
+        self.nfa.transitions = res_transitions;
     }
 
     fn find_states_with_same_transitions(group: &BTreeMap<u32, BTreeMap<char, u32>>) -> BTreeMap<BTreeMap<char, u32>, BTreeSet<u32>> {
@@ -132,11 +132,11 @@ impl Minimizer {
         let mut other_group = BTreeMap::<u32, BTreeMap<char, u32>>::new();
         let mut final_group = BTreeMap::<u32, BTreeMap<char, u32>>::new();
 
-        for s in self.automaton.states.difference(&self.automaton.final_states) {
+        for s in self.nfa.states.difference(&self.nfa.final_states) {
             other_group.insert(*s, BTreeMap::new());
         }
 
-        for f in &self.automaton.final_states {
+        for f in &self.nfa.final_states {
             final_group.insert(*f, BTreeMap::new());
         }
 
@@ -173,13 +173,13 @@ impl Minimizer {
         }
 
         current_groups = self.fill_group_transitions(current_groups);
-        self.build_automaton_from_groups(current_groups);
+        self.build_nfa_from_groups(current_groups);
 
         self
     }
 
-    pub fn take(self) -> Automaton {
-        self.automaton
+    pub fn take(self) -> NFA {
+        self.nfa
     }
 }
 
@@ -189,17 +189,17 @@ mod tests {
 
     #[test]
     fn minimize_1() {
-        let mut automaton = Automaton::new();
+        let mut nfa = NFA::new();
 
-        automaton.alphabet = set!['a', 'b'];
-        automaton.states = set![0, 1, 2, 3];
-        automaton.counter.value = 4;
+        nfa.alphabet = set!['a', 'b'];
+        nfa.states = set![0, 1, 2, 3];
+        nfa.counter.value = 4;
 
-        automaton.initial_states = set![0];
+        nfa.initial_states = set![0];
 
-        automaton.final_states = set![1, 3];
+        nfa.final_states = set![1, 3];
 
-        automaton.transitions = set![
+        nfa.transitions = set![
             Transition::new(0, Some('a'), 1),
             Transition::new(0, Some('b'), 2),
             Transition::new(1, Some('a'), 1),
@@ -210,13 +210,13 @@ mod tests {
             Transition::new(3, Some('b'), 0)
         ];
 
-        automaton = Minimizer::new(automaton).minimize().take();
+        nfa = Minimizer::new(nfa).minimize().take();
 
-        assert_eq!(automaton.states, set![0, 1]);
-        assert_eq!(automaton.counter.value, 2);
-        assert_eq!(automaton.initial_states, set![0]);
-        assert_eq!(automaton.final_states, set![1]);
-        assert_eq!(automaton.transitions, set![
+        assert_eq!(nfa.states, set![0, 1]);
+        assert_eq!(nfa.counter.value, 2);
+        assert_eq!(nfa.initial_states, set![0]);
+        assert_eq!(nfa.final_states, set![1]);
+        assert_eq!(nfa.transitions, set![
             Transition::new(0, Some('a'), 1),
             Transition::new(0, Some('b'), 0),
             Transition::new(1, Some('a'), 1),
@@ -226,17 +226,17 @@ mod tests {
 
     #[test]
     fn minimize_2() {
-        let mut automaton = Automaton::new();
+        let mut nfa = NFA::new();
 
-        automaton.alphabet = set!['a', 'b'];
-        automaton.states = set![0, 1, 2, 3];
-        automaton.counter.value = 4;
+        nfa.alphabet = set!['a', 'b'];
+        nfa.states = set![0, 1, 2, 3];
+        nfa.counter.value = 4;
 
-        automaton.initial_states = set![0];
+        nfa.initial_states = set![0];
 
-        automaton.final_states = set![2];
+        nfa.final_states = set![2];
 
-        automaton.transitions = set![
+        nfa.transitions = set![
             Transition::new(0, Some('a'), 1),
             Transition::new(0, Some('b'), 2),
             Transition::new(1, Some('a'), 2),
@@ -247,13 +247,13 @@ mod tests {
             Transition::new(3, Some('b'), 1)
         ];
 
-        automaton = Minimizer::new(automaton).minimize().take();
+        nfa = Minimizer::new(nfa).minimize().take();
 
-        assert_eq!(automaton.states, set![0, 1, 2]);
-        assert_eq!(automaton.counter.value, 3);
-        assert_eq!(automaton.initial_states, set![0]);
-        assert_eq!(automaton.final_states, set![2]);
-        assert_eq!(automaton.transitions, set![
+        assert_eq!(nfa.states, set![0, 1, 2]);
+        assert_eq!(nfa.counter.value, 3);
+        assert_eq!(nfa.initial_states, set![0]);
+        assert_eq!(nfa.final_states, set![2]);
+        assert_eq!(nfa.transitions, set![
             Transition::new(0, Some('a'), 1),
             Transition::new(0, Some('b'), 2),
             Transition::new(1, Some('a'), 2),

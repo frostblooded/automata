@@ -2,7 +2,7 @@
 mod helpers;
 mod counter;
 
-pub mod automaton;
+pub mod nfa;
 pub mod expression;
 pub mod minimizer;
 pub mod determinizer;

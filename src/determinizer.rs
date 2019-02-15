@@ -1,17 +1,17 @@
-use crate::automaton::Automaton;
+use crate::nfa::NFA;
 use crate::transition::Transition;
 use crate::counter::Counter;
 
 use std::collections::{BTreeSet, BTreeMap};
 
 pub struct Determinizer {
-    automaton: Automaton
+    nfa: NFA
 }    
 
 impl Determinizer {
-    pub fn new(new_automaton: Automaton) -> Self {
+    pub fn new(new_nfa: NFA) -> Self {
         Determinizer {
-            automaton: new_automaton
+            nfa: new_nfa
         }
     }
 
@@ -21,7 +21,7 @@ impl Determinizer {
         let mut res_final_states = BTreeSet::<u32>::new();
         let mut res_transitions = BTreeSet::<Transition>::new();
 
-        let initial_epsilon_closure: BTreeSet<u32> = self.epsilon_closure(&self.automaton.initial_states).into();
+        let initial_epsilon_closure: BTreeSet<u32> = self.epsilon_closure(&self.nfa.initial_states).into();
         res_initial_states = set![initial_epsilon_closure.clone()];
         res_states = res_initial_states.clone();
 
@@ -44,7 +44,7 @@ impl Determinizer {
             found_this_step.clear();
 
             for s in &found_last_step {
-                for a in &self.automaton.alphabet{
+                for a in &self.nfa.alphabet{
                     let reachable_with_letter = self.reachable_from_set(s, Some(*a));
                     let reachable_enclosed = self.epsilon_closure(&reachable_with_letter).into();
 
@@ -63,17 +63,17 @@ impl Determinizer {
                     res_transitions.insert(Transition::new(*state_id, Some(*a), *found_state_id));
                 }
 
-                if !self.automaton.final_states.is_disjoint(s) {
+                if !self.nfa.final_states.is_disjoint(s) {
                     let state_id = found_set_states.get(s).unwrap();
                     res_final_states.insert(*state_id);
                 }
             }
         }
 
-        self.automaton.states = found_set_states.values().map(|&s| s).collect();
-        self.automaton.initial_states = set![*found_set_states.get(&initial_epsilon_closure).unwrap()];
-        self.automaton.final_states = res_final_states;
-        self.automaton.transitions = res_transitions;
+        self.nfa.states = found_set_states.values().map(|&s| s).collect();
+        self.nfa.initial_states = set![*found_set_states.get(&initial_epsilon_closure).unwrap()];
+        self.nfa.final_states = res_final_states;
+        self.nfa.transitions = res_transitions;
 
         self
     }
@@ -82,7 +82,7 @@ impl Determinizer {
         let mut res = BTreeSet::<u32>::new();
 
         for s in start_states {
-            res = res.union(&self.automaton.reachable(*s, wanted_label)).map(|&s| s).collect();
+            res = res.union(&self.nfa.reachable(*s, wanted_label)).map(|&s| s).collect();
         }
 
         res
@@ -98,7 +98,7 @@ impl Determinizer {
             found_this_step.clear();
 
             for s in found_last_step {
-                let epsilon_reachable = self.automaton.reachable(s, None);
+                let epsilon_reachable = self.nfa.reachable(s, None);
 
                 for reached_state in &epsilon_reachable {
                     if !res.contains(reached_state) {
@@ -112,8 +112,8 @@ impl Determinizer {
         res
     }
 
-    pub fn take(self) -> Automaton {
-        self.automaton
+    pub fn take(self) -> NFA {
+        self.nfa
     }
 }
 
@@ -123,16 +123,16 @@ mod tests {
 
     #[test]
     fn epsilon_closure() {
-        let mut automaton = Automaton::new();
-        automaton.states.insert(0);
-        automaton.states.insert(1);
-        automaton.states.insert(2);
-        automaton.counter.value = 3;
-        automaton.transitions.insert(Transition::new(0, Some('a'), 1));
-        automaton.transitions.insert(Transition::new(1, None, 2));
-        automaton.transitions.insert(Transition::new(2, Some('b'), 0));
+        let mut nfa = NFA::new();
+        nfa.states.insert(0);
+        nfa.states.insert(1);
+        nfa.states.insert(2);
+        nfa.counter.value = 3;
+        nfa.transitions.insert(Transition::new(0, Some('a'), 1));
+        nfa.transitions.insert(Transition::new(1, None, 2));
+        nfa.transitions.insert(Transition::new(2, Some('b'), 0));
 
-        let determinizer = Determinizer::new(automaton);
+        let determinizer = Determinizer::new(nfa);
 
         assert_eq!(determinizer.epsilon_closure(&set![0]), set![0]);
         assert_eq!(determinizer.epsilon_closure(&set![0, 1]), set![0, 1, 2]);
@@ -141,16 +141,16 @@ mod tests {
 
     #[test]
     fn determinize() {
-        let mut automaton = Automaton::new();
+        let mut nfa = NFA::new();
 
-        automaton.alphabet = set!['a', 'b'];
-        automaton.states = set![0, 1, 2];
-        automaton.counter.value = 3;
+        nfa.alphabet = set!['a', 'b'];
+        nfa.states = set![0, 1, 2];
+        nfa.counter.value = 3;
 
-        automaton.initial_states = set![2];
-        automaton.final_states = set![0];
+        nfa.initial_states = set![2];
+        nfa.final_states = set![0];
 
-        automaton.transitions = set![
+        nfa.transitions = set![
             Transition::new(0, Some('a'), 1),
             Transition::new(0, Some('b'), 2),
             Transition::new(0, None, 1),
@@ -160,12 +160,12 @@ mod tests {
             Transition::new(2, Some('b'), 1)
         ];
 
-        automaton = Determinizer::new(automaton).determinize().take();
+        nfa = Determinizer::new(nfa).determinize().take();
 
-        assert_eq!(automaton.states, set![0, 1, 2]);
-        assert_eq!(automaton.initial_states, set![0]);
-        assert_eq!(automaton.final_states, set![1, 2]);
-        assert_eq!(automaton.transitions, set![
+        assert_eq!(nfa.states, set![0, 1, 2]);
+        assert_eq!(nfa.initial_states, set![0]);
+        assert_eq!(nfa.final_states, set![1, 2]);
+        assert_eq!(nfa.transitions, set![
             Transition::new(0, Some('a'), 0),
             Transition::new(0, Some('b'), 1),
             Transition::new(1, Some('a'), 1),

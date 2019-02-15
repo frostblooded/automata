@@ -4,7 +4,7 @@ use crate::counter::Counter;
 use std::collections::BTreeSet;
 
 #[derive(Debug)]
-pub struct Automaton {
+pub struct NFA {
     pub(crate) alphabet: BTreeSet<char>,
     pub(crate) states: BTreeSet<u32>,
     pub(crate) transitions: BTreeSet<Transition>,
@@ -15,9 +15,9 @@ pub struct Automaton {
     pub(crate) counter: Counter
 }
 
-impl Automaton {
+impl NFA {
     pub fn new() -> Self {
-        Automaton {
+        NFA {
             alphabet: BTreeSet::new(),
             states: BTreeSet::new(),
             transitions: BTreeSet::new(),
@@ -28,39 +28,39 @@ impl Automaton {
     }
 
     pub fn from_char(letter: char) -> Self {
-        let mut automaton = Automaton::new();
-        let state1 = automaton.counter.tick();
-        let state2 = automaton.counter.tick();
+        let mut nfa = NFA::new();
+        let state1 = nfa.counter.tick();
+        let state2 = nfa.counter.tick();
 
-        automaton.alphabet.insert(letter);
-        automaton.states.insert(state1);
-        automaton.states.insert(state2);
-        automaton.transitions.insert(Transition::new(state1, Some(letter), state2));
+        nfa.alphabet.insert(letter);
+        nfa.states.insert(state1);
+        nfa.states.insert(state2);
+        nfa.transitions.insert(Transition::new(state1, Some(letter), state2));
 
-        automaton.initial_states.insert(state1);
-        automaton.final_states.insert(state2);
+        nfa.initial_states.insert(state1);
+        nfa.final_states.insert(state2);
 
-        automaton
+        nfa
     }
 
     pub fn from_string(string: &str) -> Self {
         let mut chars = string.chars();
         let first_char = chars.next();
-        let mut automaton: Automaton;
+        let mut nfa: NFA;
 
-        automaton = match first_char {
-            Some(ch) => Automaton::from_char(ch),
-            None     => Automaton::new()
+        nfa = match first_char {
+            Some(ch) => NFA::from_char(ch),
+            None     => NFA::new()
         };
 
         for ch in chars {
-            automaton.concat(&Automaton::from_char(ch));
+            nfa.concat(&NFA::from_char(ch));
         }
 
-        automaton
+        nfa
     }
 
-    pub fn union(&mut self, other: &Automaton) {
+    pub fn union(&mut self, other: &NFA) {
         self.shift_states(other.counter.value);
         self.counter.value += other.counter.value;
 
@@ -81,7 +81,7 @@ impl Automaton {
                                            .collect();
     }
 
-    pub fn concat(&mut self, other: &Automaton) {
+    pub fn concat(&mut self, other: &NFA) {
         self.shift_states(other.counter.value);
         self.counter.value += other.counter.value;
 
@@ -151,97 +151,97 @@ mod tests {
 
     #[test]
     fn create_from_letter() {
-        let automaton = Automaton::from_char('a');
+        let nfa = NFA::from_char('a');
 
-        assert_eq!(automaton.alphabet, set!['a']);
-        assert_eq!(automaton.states, set![0, 1]);
-        assert_eq!(automaton.initial_states, set![0]);
-        assert_eq!(automaton.final_states, set![1]);
-        assert_eq!(automaton.transitions, set![Transition::new(0, Some('a'), 1)]);
-        assert_eq!(automaton.counter.value, 2);
+        assert_eq!(nfa.alphabet, set!['a']);
+        assert_eq!(nfa.states, set![0, 1]);
+        assert_eq!(nfa.initial_states, set![0]);
+        assert_eq!(nfa.final_states, set![1]);
+        assert_eq!(nfa.transitions, set![Transition::new(0, Some('a'), 1)]);
+        assert_eq!(nfa.counter.value, 2);
     }
 
     #[test]
     fn create_from_string() {
-        let automaton = Automaton::from_string("abc");
+        let nfa = NFA::from_string("abc");
 
-        assert_eq!(automaton.alphabet, set!['a', 'b', 'c']);
-        assert_eq!(automaton.states, set![0, 1, 2, 3, 4, 5]);
-        assert_eq!(automaton.initial_states, set![4]);
-        assert_eq!(automaton.final_states, set![1]);
-        assert_eq!(automaton.transitions, set![
+        assert_eq!(nfa.alphabet, set!['a', 'b', 'c']);
+        assert_eq!(nfa.states, set![0, 1, 2, 3, 4, 5]);
+        assert_eq!(nfa.initial_states, set![4]);
+        assert_eq!(nfa.final_states, set![1]);
+        assert_eq!(nfa.transitions, set![
             Transition::new(4, Some('a'), 5),
             Transition::new(5, None, 2),
             Transition::new(2, Some('b'), 3),
             Transition::new(3, None, 0),
             Transition::new(0, Some('c'), 1)
         ]);
-        assert_eq!(automaton.counter.value, 6);
+        assert_eq!(nfa.counter.value, 6);
     }
 
     #[test]
     fn union_automata() {
-        let mut automaton1 = Automaton::from_char('a');
-        let automaton2 = Automaton::from_char('b');
+        let mut nfa1 = NFA::from_char('a');
+        let nfa2 = NFA::from_char('b');
 
-        automaton1.union(&automaton2);
+        nfa1.union(&nfa2);
 
-        assert_eq!(automaton1.alphabet, set!['a', 'b']);
-        assert_eq!(automaton1.states, set![0, 1, 2, 3]);
-        assert_eq!(automaton1.initial_states, set![0, 2]);
-        assert_eq!(automaton1.final_states, set![1, 3]);
-        assert_eq!(automaton1.transitions, set![
+        assert_eq!(nfa1.alphabet, set!['a', 'b']);
+        assert_eq!(nfa1.states, set![0, 1, 2, 3]);
+        assert_eq!(nfa1.initial_states, set![0, 2]);
+        assert_eq!(nfa1.final_states, set![1, 3]);
+        assert_eq!(nfa1.transitions, set![
             Transition::new(2, Some('a'), 3),
             Transition::new(0, Some('b'), 1)
         ]);
-        assert_eq!(automaton1.counter.value, 4);
+        assert_eq!(nfa1.counter.value, 4);
     }
 
     #[test]
     fn concat_automata() {
-        let mut automaton1 = Automaton::from_char('a');
-        let automaton2 = Automaton::from_char('b');
+        let mut nfa1 = NFA::from_char('a');
+        let nfa2 = NFA::from_char('b');
 
-        automaton1.concat(&automaton2);
+        nfa1.concat(&nfa2);
 
-        assert_eq!(automaton1.alphabet, set!['a', 'b']);
-        assert_eq!(automaton1.states, set![0, 1, 2, 3]);
-        assert_eq!(automaton1.initial_states, set![2]);
-        assert_eq!(automaton1.final_states, set![1]);
-        assert_eq!(automaton1.transitions, set![
+        assert_eq!(nfa1.alphabet, set!['a', 'b']);
+        assert_eq!(nfa1.states, set![0, 1, 2, 3]);
+        assert_eq!(nfa1.initial_states, set![2]);
+        assert_eq!(nfa1.final_states, set![1]);
+        assert_eq!(nfa1.transitions, set![
             Transition::new(2, Some('a'), 3),
             Transition::new(3, None, 0),
             Transition::new(0, Some('b'), 1)
         ]);
-        assert_eq!(automaton1.counter.value, 4);
+        assert_eq!(nfa1.counter.value, 4);
     }
 
     #[test]
     fn kleene_automata() {
-        let mut automaton = Automaton::from_char('a');
+        let mut nfa = NFA::from_char('a');
 
-        automaton.kleene();
+        nfa.kleene();
 
-        assert_eq!(automaton.states, set![0, 1, 2, 3]);
-        assert_eq!(automaton.initial_states, set![2]);
-        assert_eq!(automaton.final_states, set![3]);
-        assert_eq!(automaton.transitions, set![
+        assert_eq!(nfa.states, set![0, 1, 2, 3]);
+        assert_eq!(nfa.initial_states, set![2]);
+        assert_eq!(nfa.final_states, set![3]);
+        assert_eq!(nfa.transitions, set![
             Transition::new(0, Some('a'), 1),
             Transition::new(1, None, 3),
             Transition::new(3, None, 2),
             Transition::new(2, None, 0)
         ]);
-        assert_eq!(automaton.counter.value, 4);
+        assert_eq!(nfa.counter.value, 4);
     }
 
     #[test]
     fn shift_states() {
-        let mut automaton = Automaton::from_char('a');
-        automaton.shift_states(2);
+        let mut nfa = NFA::from_char('a');
+        nfa.shift_states(2);
 
-        assert_eq!(automaton.states, set![2, 3]);
-        assert_eq!(automaton.initial_states, set![2]);
-        assert_eq!(automaton.final_states, set![3]);
-        assert_eq!(automaton.transitions, set![Transition::new(2, Some('a'), 3)]);
+        assert_eq!(nfa.states, set![2, 3]);
+        assert_eq!(nfa.initial_states, set![2]);
+        assert_eq!(nfa.final_states, set![3]);
+        assert_eq!(nfa.transitions, set![Transition::new(2, Some('a'), 3)]);
     }
 }

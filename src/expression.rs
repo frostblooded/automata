@@ -1,21 +1,21 @@
-use crate::automaton::Automaton;
+use crate::nfa::NFA;
 use crate::minimizer::Minimizer;
 use crate::determinizer::Determinizer;
 use crate::transition::Transition;
 
 pub struct Expression {
-    automaton: Automaton
+    nfa: NFA
 }
 
 impl Expression {
     pub fn new(string: &str) -> Self {
-        let mut automaton = Automaton::from_string(string);
+        let mut nfa = NFA::from_string(string);
 
-        automaton = Determinizer::new(automaton).determinize().take();
-        automaton = Minimizer::new(automaton).minimize().take();
+        nfa = Determinizer::new(nfa).determinize().take();
+        nfa = Minimizer::new(nfa).minimize().take();
 
         Expression {
-            automaton: automaton
+            nfa: nfa
         }
     }
 }
@@ -27,13 +27,13 @@ mod tests {
     #[test]
     fn test_expression_from_plain_string() {
         let expression = Expression::new("abc");
-        let automaton = expression.automaton;
+        let nfa = expression.nfa;
 
-        assert_eq!(automaton.alphabet, set!['a', 'b', 'c']);
-        assert_eq!(automaton.states, set![0, 1, 2, 3, 4]);
-        assert_eq!(automaton.initial_states, set![1]);
-        assert_eq!(automaton.final_states, set![4]);
-        assert_eq!(automaton.transitions, set![
+        assert_eq!(nfa.alphabet, set!['a', 'b', 'c']);
+        assert_eq!(nfa.states, set![0, 1, 2, 3, 4]);
+        assert_eq!(nfa.initial_states, set![1]);
+        assert_eq!(nfa.final_states, set![4]);
+        assert_eq!(nfa.transitions, set![
             Transition::new(0, Some('a'), 0),
             Transition::new(0, Some('b'), 0),
             Transition::new(0, Some('c'), 0),
@@ -50,6 +50,6 @@ mod tests {
             Transition::new(4, Some('b'), 0),
             Transition::new(4, Some('c'), 0)
         ]);
-        assert_eq!(automaton.counter.value, 5);
+        assert_eq!(nfa.counter.value, 5);
     }
 }
