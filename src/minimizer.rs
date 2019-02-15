@@ -107,7 +107,7 @@ impl Minimizer {
     }
 
     // This function assumes that the automaton is deterministic.
-    pub fn minimize(&mut self) {
+    pub fn minimize(mut self) -> Self {
         // There are the diffent groups that states are being split into during the steps of the
         // minimization process. The current_groups hash has the following structure:
         //
@@ -181,6 +181,8 @@ impl Minimizer {
 
         current_groups = self.fill_group_transitions(current_groups);
         self.build_automaton_from_groups(current_groups);
+
+        self
     }
 
     pub fn take(self) -> Automaton {
@@ -215,9 +217,7 @@ mod tests {
             Transition::new(3, Some('b'), 0)
         ];
 
-        let mut minimizer = Minimizer::new(automaton);
-        minimizer.minimize();
-        automaton = minimizer.take();
+        automaton = Minimizer::new(automaton).minimize().take();
 
         assert_eq!(automaton.states, set![0, 1]);
         assert_eq!(automaton.counter.value, 2);
@@ -254,9 +254,7 @@ mod tests {
             Transition::new(3, Some('b'), 1)
         ];
 
-        let mut minimizer = Minimizer::new(automaton);
-        minimizer.minimize();
-        automaton = minimizer.take();
+        automaton = Minimizer::new(automaton).minimize().take();
 
         assert_eq!(automaton.states, set![0, 1, 2]);
         assert_eq!(automaton.counter.value, 3);

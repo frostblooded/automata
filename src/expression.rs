@@ -18,10 +18,7 @@ impl Expression {
         let mut automaton = Automaton::from_string(string);
 
         automaton.determinize();
-
-        let mut minimizer = Minimizer::new(automaton);
-        minimizer.minimize();
-        automaton = minimizer.take();
+        automaton = Minimizer::new(automaton).minimize().take();
 
         Expression {
             automaton: automaton
