@@ -29,11 +29,14 @@ impl DFA {
 
     // Returns the states that are reachable by a state
     // through a specific transition
-    pub(crate) fn reachable(&self, start_state: u32, wanted_label: char) -> BTreeSet<u32> {
-        self.transitions.iter()
-                        .filter(|s| s.from == start_state && s.label == wanted_label)
-                        .map(|s| s.to)
-                        .collect()
+    pub(crate) fn reachable(&self, start_state: u32, wanted_label: char) -> Option<u32> {
+        for transition in &self.transitions {
+            if transition.from == start_state && transition.label == wanted_label {
+                return Some(transition.to);
+            }
+        }
+
+        None
     }
 }
 
