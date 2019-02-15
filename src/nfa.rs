@@ -7,7 +7,7 @@ use std::str::Chars;
 use std::collections::BTreeSet;
 
 #[derive(Debug)]
-pub struct NFA {
+pub(crate) struct NFA {
     pub(crate) alphabet: BTreeSet<char>,
     pub(crate) states: BTreeSet<u32>,
     pub(crate) transitions: BTreeSet<Transition<Option<char>>>,
@@ -19,7 +19,7 @@ pub struct NFA {
 }
 
 impl NFA {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         NFA {
             alphabet: BTreeSet::new(),
             states: BTreeSet::new(),
@@ -30,7 +30,7 @@ impl NFA {
         }
     }
 
-    pub fn from_char(letter: char) -> Self {
+    pub(crate) fn from_char(letter: char) -> Self {
         let mut nfa = NFA::new();
         let state1 = nfa.counter.tick();
         let state2 = nfa.counter.tick();
@@ -46,7 +46,7 @@ impl NFA {
         nfa
     }
 
-    pub fn from_optional_char(letter: char) -> Self {
+    pub(crate) fn from_optional_char(letter: char) -> Self {
         let mut nfa = NFA::new();
         let state1 = nfa.counter.tick();
         let state2 = nfa.counter.tick();
@@ -63,7 +63,7 @@ impl NFA {
         nfa
     }
 
-    pub fn from_plus_char(letter: char) -> Self {
+    pub(crate) fn from_plus_char(letter: char) -> Self {
         let mut nfa = NFA::new();
         let state1 = nfa.counter.tick();
         let state2 = nfa.counter.tick();
@@ -113,7 +113,7 @@ impl NFA {
         }
     }
 
-    pub fn from_string(string: &str) -> Self {
+    pub(crate) fn from_string(string: &str) -> Self {
         let mut nfa = NFA::new();
 
         // For each slice of the expression that is separated by the OR character.
@@ -123,6 +123,9 @@ impl NFA {
             let mut chars = or_slice.chars().peekable();
             let mut current_nfa;
 
+            // We need to handle the first character separately, because otherwise the current NFA would
+            // always be empty and concatenating anything to it would result in an automaton that
+            // doesn't match anything.
             current_nfa = match chars.next() {
                 Some(ch) => NFA::from_chars_iterator(ch, &mut chars),
                 None => NFA::new()
@@ -138,7 +141,7 @@ impl NFA {
         nfa
     }
 
-    pub fn union(&mut self, other: &NFA) {
+    pub(crate) fn union(&mut self, other: &NFA) {
         self.shift_states(other.counter.value);
         self.counter.value += other.counter.value;
 
@@ -149,7 +152,7 @@ impl NFA {
         self.transitions = self.transitions.union(&other.transitions).cloned().collect();
     }
 
-    pub fn concat(&mut self, other: &NFA) {
+    pub(crate) fn concat(&mut self, other: &NFA) {
         self.shift_states(other.counter.value);
         self.counter.value += other.counter.value;
 
@@ -167,7 +170,7 @@ impl NFA {
         self.final_states = other.final_states.clone();
     }
 
-    pub fn kleene(&mut self) {
+    pub(crate) fn kleene(&mut self) {
         let new_initial_state = self.counter.tick();
         let new_final_state = self.counter.tick();
 

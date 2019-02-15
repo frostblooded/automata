@@ -1,10 +1,10 @@
 #[macro_use]
 mod helpers;
 mod counter;
+mod nfa;
+mod dfa;
+mod minimizer;
+mod determinizer;
+mod transition;
 
-pub mod nfa;
-pub mod dfa;
 pub mod expression;
-pub mod minimizer;
-pub mod determinizer;
-pub mod transition;

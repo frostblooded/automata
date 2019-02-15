@@ -5,28 +5,26 @@ use crate::counter::Counter;
 
 use std::collections::{BTreeSet, BTreeMap};
 
-pub struct Determinizer {
+pub(crate) struct Determinizer {
     nfa: NFA,
     dfa: DFA
 }    
 
 impl Determinizer {
-    pub fn new(new_nfa: NFA) -> Self {
+    pub(crate) fn new(new_nfa: NFA) -> Self {
         Determinizer {
             nfa: new_nfa,
             dfa: DFA::new()
         }
     }
 
-    pub fn determinize(mut self) -> Self {
-        let mut res_states: BTreeSet<BTreeSet<u32>>;
+    pub(crate) fn determinize(mut self) -> Self {
         let mut res_final_states = BTreeSet::<u32>::new();
         let mut res_transitions = BTreeSet::<Transition<char>>::new();
 
         let initial_epsilon_closure: BTreeSet<u32> = self.epsilon_closure(&self.nfa.initial_states).into();
-        res_states = set![initial_epsilon_closure.clone()];
 
-        let mut found_this_step = res_states.clone();
+        let mut found_this_step: BTreeSet<BTreeSet<u32>> = set![initial_epsilon_closure.clone()];
         let mut found_last_step: BTreeSet<BTreeSet<u32>>;
 
         // While making the automaton deterministic, we are finding
@@ -35,37 +33,29 @@ impl Determinizer {
         // their respective ids stored somewhere.
         let mut found_set_states: BTreeMap<BTreeSet<u32>, u32> = BTreeMap::new();
         let mut set_states_counter = Counter::new();
-
-        for s in &res_states {
-            found_set_states.insert(s.clone(), set_states_counter.tick());
-        }
+        found_set_states.insert(initial_epsilon_closure.clone(), set_states_counter.tick());
 
         while found_this_step.len() > 0 {
             found_last_step = found_this_step.clone();
             found_this_step.clear();
 
-            for s in &found_last_step {
-                for a in &self.nfa.alphabet{
-                    let reachable_with_letter = self.reachable_from_set(s, Some(*a));
-                    let reachable_enclosed = self.epsilon_closure(&reachable_with_letter).into();
+            for state in &found_last_step {
+                for letter in &self.nfa.alphabet {
+                    let reachable_with_letter = self.reachable_from_set(state, Some(*letter));
+                    let reachable_enclosed = self.epsilon_closure(&reachable_with_letter);
 
-                    if !res_states.contains(&reachable_enclosed) {
+                    if !found_set_states.contains_key(&reachable_enclosed) {
                         found_set_states.insert(reachable_enclosed.clone(), set_states_counter.tick());
-                        res_states.insert(reachable_enclosed.clone());
-                        
-                        if !found_this_step.contains(&reachable_enclosed) {
-                            found_this_step.insert(reachable_enclosed.clone());
-                        }
+                        found_this_step.insert(reachable_enclosed.clone());
                     }
 
                     let found_state_id = found_set_states[&reachable_enclosed];
-                    let state_id = found_set_states[s];
-
-                    res_transitions.insert(Transition::new(state_id, *a, found_state_id));
+                    let state_id = found_set_states[state];
+                    res_transitions.insert(Transition::new(state_id, *letter, found_state_id));
                 }
 
-                if !self.nfa.final_states.is_disjoint(s) {
-                    let state_id = found_set_states[s];
+                if !self.nfa.final_states.is_disjoint(state) {
+                    let state_id = found_set_states[state];
                     res_final_states.insert(state_id);
                 }
             }
@@ -75,7 +65,11 @@ impl Determinizer {
 
         dfa.alphabet = self.nfa.alphabet.clone();
         dfa.states = found_set_states.values().cloned().collect();
+
+        // The initial state is always the first state because the algorithm
+        // starts working from it
         dfa.initial_state = Some(0);
+
         dfa.final_states = res_final_states;
         dfa.transitions = res_transitions;
         dfa.counter = set_states_counter;
@@ -85,10 +79,10 @@ impl Determinizer {
     }
 
     fn reachable_from_set(&self, start_states: &BTreeSet<u32>, wanted_label: Option<char>) -> BTreeSet<u32> {
-        let mut res = BTreeSet::<u32>::new();
+        let mut res = BTreeSet::new();
 
-        for s in start_states {
-            res = res.union(&self.nfa.reachable(*s, wanted_label)).cloned().collect();
+        for state in start_states {
+            res = res.union(&self.nfa.reachable(*state, wanted_label)).cloned().collect();
         }
 
         res
@@ -100,11 +94,11 @@ impl Determinizer {
         let mut found_last_step: BTreeSet<u32>;
 
         while found_this_step.len() > 0 {
-            found_last_step = found_this_step.clone();
-            found_this_step.clear();
+            found_last_step = found_this_step;
+            found_this_step = BTreeSet::new();
 
-            for s in found_last_step {
-                let epsilon_reachable = self.nfa.reachable(s, None);
+            for state in found_last_step {
+                let epsilon_reachable = self.nfa.reachable(state, None);
 
                 for reached_state in &epsilon_reachable {
                     if !res.contains(reached_state) {
@@ -118,7 +112,7 @@ impl Determinizer {
         res
     }
 
-    pub fn take(self) -> DFA {
+    pub(crate) fn take(self) -> DFA {
         self.dfa
     }
 }

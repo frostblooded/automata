@@ -4,12 +4,12 @@ use crate::counter::Counter;
 
 use std::collections::{BTreeSet, BTreeMap};
 
-pub struct Minimizer {
+pub(crate) struct Minimizer {
     dfa: DFA
 }    
 
 impl Minimizer {
-    pub fn new(new_dfa: DFA) -> Self {
+    pub(crate) fn new(new_dfa: DFA) -> Self {
         Minimizer {
             dfa: new_dfa
         }
@@ -69,7 +69,7 @@ impl Minimizer {
         for (group_id, group) in &groups {
             // We get the group's first state and it's transitions, because those are
             // the transitions of the whole group.
-            let group_transitions = group.iter().nth(0).expect("Empty group").1.clone();
+            let group_transitions = group.iter().nth(0).expect("Empty group").1;
             res_states.insert(*group_id);
 
             // If the group has final states, it will be final in the new automaton
@@ -78,7 +78,7 @@ impl Minimizer {
             }
 
             for (transition_letter, transition_to) in group_transitions {
-                res_transitions.insert(Transition::new(*group_id, transition_letter, transition_to));
+                res_transitions.insert(Transition::new(*group_id, *transition_letter, *transition_to));
             }
 
             self.dfa.counter.value += 1;
@@ -89,6 +89,25 @@ impl Minimizer {
         self.dfa.transitions = res_transitions;
     }
 
+    /*
+    Group the states in a group that have the same transitions. For example
+
+    {
+        0: {'a': 0, 'b': 1},
+        1: {'a': 1, 'b': 2},
+        2: {'a': 0, 'b': 1}
+    }
+
+    would return
+
+    {
+        {'a': 0, 'b': 1}: {0, 2},
+        {'a': 1, 'b': 2}: {1}
+    }
+
+    because states 0 and 2 have the same transitions with 'a' and 'b' to 0 and 1 respectively, while
+    state 1's transitions are different.
+    */
     fn find_states_with_same_transitions(group: &BTreeMap<u32, BTreeMap<char, u32>>) -> BTreeMap<BTreeMap<char, u32>, BTreeSet<u32>> {
         let mut res = BTreeMap::<BTreeMap<char, u32>, BTreeSet<u32>>::new();
 
@@ -102,7 +121,7 @@ impl Minimizer {
         res
     }
 
-    pub fn minimize(mut self) -> Self {
+    pub(crate) fn minimize(mut self) -> Self {
         // There are the diffent groups that states are being split into during the steps of the
         // minimization process. The current_groups hash has the following structure:
         //
@@ -129,8 +148,8 @@ impl Minimizer {
         let mut current_groups = BTreeMap::<u32, BTreeMap<u32, BTreeMap<char, u32>>>::new();
         let mut counter = Counter::new();
 
-        // At the start we create two groups. One of them has all final states and the other
-        // one has all other states.
+        // At the start we create two groups. One of them has all the final states and
+        // the other has all other states.
         let mut other_group = BTreeMap::<u32, BTreeMap<char, u32>>::new();
         let mut final_group = BTreeMap::<u32, BTreeMap<char, u32>>::new();
 
@@ -178,7 +197,7 @@ impl Minimizer {
         self
     }
 
-    pub fn take(self) -> DFA {
+    pub(crate) fn take(self) -> DFA {
         self.dfa
     }
 }

@@ -4,7 +4,7 @@ use crate::counter::Counter;
 use std::collections::BTreeSet;
 
 #[derive(Debug)]
-pub struct DFA {
+pub(crate) struct DFA {
     pub(crate) alphabet: BTreeSet<char>,
     pub(crate) states: BTreeSet<u32>,
     pub(crate) transitions: BTreeSet<Transition<char>>,
@@ -16,7 +16,7 @@ pub struct DFA {
 }
 
 impl DFA {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         DFA {
             alphabet: BTreeSet::new(),
             states: BTreeSet::new(),
@@ -45,7 +45,7 @@ impl DFA {
         match self.initial_state {
             Some(state) => current_state = state,
             None        => return false
-        }
+        };
 
         for ch in text.chars() {
             match self.reachable(current_state, ch) {

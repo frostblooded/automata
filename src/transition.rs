@@ -1,14 +1,14 @@
 use std::cmp::Ordering;
 
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub struct Transition<T> {
-    pub from: u32,
-    pub label: T,
-    pub to: u32
+pub(crate) struct Transition<T> {
+    pub(crate) from: u32,
+    pub(crate) label: T,
+    pub(crate) to: u32
 }
 
 impl<T> Transition<T> {
-    pub fn new(new_from: u32, new_label: T, new_to: u32) -> Self {
+    pub(crate) fn new(new_from: u32, new_label: T, new_to: u32) -> Self {
         Transition {
             from: new_from,
             label: new_label,

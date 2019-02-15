@@ -10,7 +10,6 @@ pub struct Expression {
 impl Expression {
     pub fn new(string: &str) -> Self {
         let nfa = NFA::from_string(string);
-
         let dfa = Determinizer::new(nfa).determinize().take();
         let dfa = Minimizer::new(dfa).minimize().take();
 
