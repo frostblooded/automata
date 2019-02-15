@@ -1,5 +1,6 @@
 use crate::automaton::Automaton;
 use crate::minimizer::Minimizer;
+use crate::determinizer::Determinizer;
 use crate::transition::Transition;
 
 // Build sets easily for easy testing and comparing
@@ -17,7 +18,7 @@ impl Expression {
     pub fn new(string: &str) -> Self {
         let mut automaton = Automaton::from_string(string);
 
-        automaton.determinize();
+        automaton = Determinizer::new(automaton).determinize().take();
         automaton = Minimizer::new(automaton).minimize().take();
 
         Expression {
