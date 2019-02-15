@@ -114,17 +114,25 @@ impl NFA {
     }
 
     pub fn from_string(string: &str) -> Self {
-        let mut chars = string.chars().peekable();
-        let first_char = chars.next();
-        let mut nfa: NFA;
+        let mut nfa = NFA::new();
 
-        nfa = match first_char {
-            Some(ch) => NFA::from_chars_iterator(ch, &mut chars),
-            None => NFA::new()
-        };
+        // For each slice of the expression that is separated by the OR character.
+        // (for example "ab|ca" would handle "ab" and "ca" separately and then union
+        // the two automata)
+        for or_slice in string.split('|') {
+            let mut chars = or_slice.chars().peekable();
+            let mut current_nfa;
 
-        while let Some(ch) = chars.next() {
-            nfa.concat(&NFA::from_chars_iterator(ch, &mut chars));
+            current_nfa = match chars.next() {
+                Some(ch) => NFA::from_chars_iterator(ch, &mut chars),
+                None => NFA::new()
+            };
+
+            while let Some(ch) = chars.next() {
+                current_nfa.concat(&NFA::from_chars_iterator(ch, &mut chars));
+            }
+
+            nfa.union(&current_nfa);
         }
 
         nfa
@@ -324,8 +332,6 @@ mod tests {
     fn create_from_string_with_plus_chars() {
         let nfa = NFA::from_string("a+b");
 
-        println!("{:?}", nfa);
-
         assert_eq!(nfa.alphabet, set!['a', 'b']);
         assert_eq!(nfa.states, set![0, 1, 2, 3]);
         assert_eq!(nfa.initial_states, set![2]);
@@ -335,6 +341,21 @@ mod tests {
             Transition::new(2, Some('a'), 3),
             Transition::new(3, None, 0),
             Transition::new(3, Some('a'), 3)
+        ]);
+        assert_eq!(nfa.counter.value, 4);
+    }
+
+    #[test]
+    fn create_from_string_with_or_chars() {
+        let nfa = NFA::from_string("a|b");
+
+        assert_eq!(nfa.alphabet, set!['a', 'b']);
+        assert_eq!(nfa.states, set![0, 1, 2, 3]);
+        assert_eq!(nfa.initial_states, set![0, 2]);
+        assert_eq!(nfa.final_states, set![1, 3]);
+        assert_eq!(nfa.transitions, set![
+            Transition::new(0, Some('b'), 1),
+            Transition::new(2, Some('a'), 3)
         ]);
         assert_eq!(nfa.counter.value, 4);
     }

@@ -48,7 +48,7 @@ mod tests {
     }
 
     #[test]
-    fn match_text_with_plux_chars() {
+    fn match_text_with_plus_chars() {
         let expression = Expression::new("ab+c");
 
         assert!(expression.matches("abc"));
@@ -62,5 +62,20 @@ mod tests {
         assert!(!expression.matches("ab"));
         assert!(!expression.matches("aab"));
         assert!(!expression.matches("aa"));
+    }
+
+    #[test]
+    fn match_text_with_or_chars() {
+        let expression = Expression::new("b|ac");
+
+        assert!(expression.matches("b"));
+        assert!(expression.matches("ac"));
+
+        assert!(!expression.matches("a"));
+        assert!(!expression.matches("c"));
+        assert!(!expression.matches("ab"));
+        assert!(!expression.matches("bac"));
+        assert!(!expression.matches("ba"));
+        assert!(!expression.matches("abc"));
     }
 }
