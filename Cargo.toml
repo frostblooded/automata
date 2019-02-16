@@ -5,3 +5,8 @@ authors = ["Nikolay Danailov <frostblooded@yahoo.com>"]
 edition = "2018"
 
 [dependencies]
+criterion = "0.2"
+
+[[bench]]
+name = "expression_benchmark"
+harness = false
