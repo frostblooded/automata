@@ -2,6 +2,6 @@
 #[macro_export]
 macro_rules! set {
     [$($x:expr),+] => {
-        [$($x,)+].iter().cloned().collect()
+        vec![$($x,)+].into_iter().collect()
     }
 }
