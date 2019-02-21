@@ -25,14 +25,14 @@ impl<T: PartialEq + Eq + Ord> Ord for Transition<T> {
             let label_cmp = self.label.cmp(&other.label);
 
             if label_cmp == Ordering::Equal {
-                return self.to.cmp(&other.to);
+                self.to.cmp(&other.to)
             }
             else {
-                return label_cmp;
+                label_cmp
             }
         }
         else {
-            return from_cmp;
+            from_cmp
         }
     }
 }

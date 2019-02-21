@@ -29,14 +29,14 @@ impl Minimizer {
         let mut state_group_ids = BTreeMap::<u32, u32>::new();
 
         // Build a map that tells us which state is in which group
-        for (_group_id, group) in &groups {
-            for (state, _state_transitions) in group {
+        for group in groups.values() {
+            for state in group.keys() {
                 let group_with_state_id: u32 = Minimizer::find_group_with_state(&groups, *state).expect("Invalid groups");
                 state_group_ids.insert(*state, group_with_state_id);
             }
         }
 
-        for (_group_id, group) in &mut groups {
+        for group in groups.values_mut() {
             for (state, state_transitions) in group {
                 for letter in &self.dfa.alphabet {
                     let reachable_state: u32 = self.dfa.reachable(*state, *letter).expect("Automaton is not total");
@@ -176,10 +176,10 @@ impl Minimizer {
 
             prev_groups_with_transitions = self.fill_group_transitions(prev_groups_with_transitions);
 
-            for (_group_id, group) in &prev_groups_with_transitions {
+            for group in prev_groups_with_transitions.values() {
                 let states_with_same_transitions = Minimizer::find_states_with_same_transitions(&group);
 
-                for (_state_transition, states) in &states_with_same_transitions {
+                for states in states_with_same_transitions.values() {
                     let mut new_group = BTreeMap::new();
 
                     for state in states {

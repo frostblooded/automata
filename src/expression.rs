@@ -14,7 +14,7 @@ impl Expression {
         let dfa = Minimizer::new(dfa).minimize().take();
 
         Expression {
-            dfa: dfa
+            dfa
         }
     }
 

@@ -54,6 +54,6 @@ impl DFA {
             }
         }
 
-        return self.final_states.contains(&current_state);
+        self.final_states.contains(&current_state)
     }
 }

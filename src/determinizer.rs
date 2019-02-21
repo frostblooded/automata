@@ -22,7 +22,7 @@ impl Determinizer {
         let mut res_final_states = BTreeSet::<u32>::new();
         let mut res_transitions = BTreeSet::<Transition<char>>::new();
 
-        let initial_epsilon_closure: BTreeSet<u32> = self.epsilon_closure(&self.nfa.initial_states).into();
+        let initial_epsilon_closure: BTreeSet<u32> = self.epsilon_closure(&self.nfa.initial_states);
 
         let mut found_this_step: BTreeSet<BTreeSet<u32>> = set![initial_epsilon_closure.clone()];
         let mut found_last_step: BTreeSet<BTreeSet<u32>>;
@@ -35,7 +35,7 @@ impl Determinizer {
         let mut set_states_counter = Counter::new();
         found_set_states.insert(initial_epsilon_closure.clone(), set_states_counter.tick());
 
-        while found_this_step.len() > 0 {
+        while !found_this_step.is_empty() {
             found_last_step = found_this_step.clone();
             found_this_step.clear();
 
@@ -93,7 +93,7 @@ impl Determinizer {
         let mut found_this_step = starting_states.clone();
         let mut found_last_step: BTreeSet<u32>;
 
-        while found_this_step.len() > 0 {
+        while !found_this_step.is_empty() {
             found_last_step = found_this_step;
             found_this_step = BTreeSet::new();
 
